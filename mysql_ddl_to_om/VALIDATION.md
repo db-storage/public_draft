@@ -1,3 +1,16 @@
+# 当前版本验证：Git PR diff / full / 安全标签
+
+2026-10-17 最新运行结果：**116 passed, 1 skipped**，共收集 117 项测试。
+
+- Git 模式使用真实本地临时 Git 仓库和 commit，覆盖 PR merge-base、直接 base/head 对比、全量强制生成、多 DB、文件增删/移动、表字段变化、rename 清单、格式变化忽略、带点/空格/中文标识符、外键循环、COMMENT 分级和标签，以及 CI shell 入口。
+- 生成器无 OM GET/写入；没有连接真实 MySQL/OM。完整 SDK 当前环境未安装，因此官方生成模型校验测试自动跳过。此前版本的模型验证记录保留在下方，不能视为本次新版端到端服务验证。
+- CLI 的 diff/full 共用 Git 快照读取、原 DDL 转换器和 comment_annotations 模块。输出包括标准 API 请求体与有序 CI 请求清单；没有执行请求清单。
+- 此次也保留并通过旧 snapshot_sync 模式的测试；新版推荐使用 pr_diff_to_om.py，不需要运行旧模式。
+
+---
+
+## 先前版本验证记录
+
 # 验证记录
 
 2026-10-17，本次全套测试 **84 passed**：

@@ -1,0 +1,72 @@
+[
+  {
+    "op": "add",
+    "path": "/columns",
+    "value": [
+      {
+        "name": "id",
+        "dataType": "BIGINT",
+        "dataTypeDisplay": "BIGINT",
+        "ordinalPosition": 1,
+        "constraint": "NOT_NULL",
+        "description": null,
+        "tags": []
+      },
+      {
+        "name": "email",
+        "dataType": "VARCHAR",
+        "dataTypeDisplay": "VARCHAR(128)",
+        "ordinalPosition": 2,
+        "dataLength": 128,
+        "description": "用户邮箱",
+        "constraint": "NULL",
+        "tags": [
+          {
+            "tagFQN": "PII.Email",
+            "source": "Classification",
+            "labelType": "Manual",
+            "state": "Confirmed"
+          },
+          {
+            "tagFQN": "Security.L3",
+            "source": "Classification",
+            "labelType": "Manual",
+            "state": "Confirmed"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/tableConstraints",
+    "value": [
+      {
+        "constraintType": "PRIMARY_KEY",
+        "columns": [
+          "id"
+        ]
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/schemaDefinition",
+    "value": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'"
+  },
+  {
+    "op": "add",
+    "path": "/tableType",
+    "value": "Regular"
+  },
+  {
+    "op": "add",
+    "path": "/description",
+    "value": "用户"
+  },
+  {
+    "op": "add",
+    "path": "/tags",
+    "value": []
+  }
+]

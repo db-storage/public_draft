@@ -1,6 +1,8 @@
 # MySQL DDL → OpenMetadata
 
-**新版：完整多表快照、删除、恢复、表/列重命名请使用 `snapshot_sync.py`，见 [SNAPSHOT_SYNC.md](SNAPSHOT_SYNC.md)。本页的 `submit` 是旧版只创建/更新的接口。**
+**当前推荐：Git 是 source of truth、不读取 OM 的 PR diff / 全量初始化模式，使用 `pr_diff_to_om.py`。见 [GIT_SYNC.md](GIT_SYNC.md)。支持 COMMENT 中安全等级/标签。**
+
+**旧版可选（会读取 OM）：完整多表快照、删除、恢复、表/列重命名请使用 `snapshot_sync.py`，见 [SNAPSHOT_SYNC.md](SNAPSHOT_SYNC.md)。本页的 `submit` 是旧版只创建/更新的接口。**
 
 读取 Git checkout 后的完整 MySQL `CREATE TABLE` 文件，用 SQLGlot 解析，生成 OpenMetadata `CreateTableRequest` JSON。无须连接或启动 MySQL，无须自己实现 SQL 词法/语法分析器。转换与提交分开，适合 CI 先审查输出，再在 merge 后提交。
 

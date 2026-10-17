@@ -1,0 +1,101 @@
+{
+  "formatVersion": 1,
+  "parser": "sqlglot/27.29.0",
+  "scope": {
+    "service": "mysql_prod",
+    "database": "default",
+    "schema": "shop",
+    "fqn": "mysql_prod.default.shop"
+  },
+  "sources": [
+    {
+      "path": "examples/schemas.sql",
+      "sha256": "da1cdffd4518491563a1260d6495ff7ae885e95c950eb601e385292c954bcece"
+    }
+  ],
+  "tables": [
+    {
+      "name": "customers",
+      "databaseSchema": "mysql_prod.default.shop",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "BIGINT",
+          "ordinalPosition": 1,
+          "constraint": "NOT_NULL"
+        },
+        {
+          "name": "name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "VARCHAR(128)",
+          "ordinalPosition": 2,
+          "dataLength": 128,
+          "description": "客户名称",
+          "constraint": "NULL"
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "schemaDefinition": "CREATE TABLE shop.customers (id BIGINT NOT NULL, name VARCHAR(128) COMMENT '客户名称', PRIMARY KEY (id)) COMMENT='客户表';",
+      "description": "客户表"
+    },
+    {
+      "name": "customer_orders",
+      "databaseSchema": "mysql_prod.default.shop",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "BIGINT",
+          "ordinalPosition": 1,
+          "constraint": "NOT_NULL"
+        },
+        {
+          "name": "customer_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "BIGINT",
+          "ordinalPosition": 2,
+          "constraint": "NOT_NULL"
+        },
+        {
+          "name": "order_status",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "VARCHAR(32)",
+          "ordinalPosition": 3,
+          "dataLength": 32,
+          "description": "订单状态",
+          "constraint": "NULL"
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "customer_id"
+          ],
+          "referredColumns": [
+            "mysql_prod.default.shop.customers.id"
+          ]
+        }
+      ],
+      "schemaDefinition": "CREATE TABLE shop.customer_orders (id BIGINT NOT NULL, customer_id BIGINT NOT NULL, order_status VARCHAR(32) COMMENT '订单状态', PRIMARY KEY (id), CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES shop.customers (id)) COMMENT='客户订单';",
+      "description": "客户订单"
+    }
+  ],
+  "warnings": []
+}

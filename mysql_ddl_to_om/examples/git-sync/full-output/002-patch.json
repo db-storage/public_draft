@@ -1,0 +1,58 @@
+[
+  {
+    "op": "add",
+    "path": "/columns",
+    "value": [
+      {
+        "name": "id",
+        "dataType": "BIGINT",
+        "dataTypeDisplay": "BIGINT",
+        "ordinalPosition": 1,
+        "constraint": "NOT_NULL",
+        "description": null,
+        "tags": []
+      },
+      {
+        "name": "created_at",
+        "dataType": "DATETIME",
+        "dataTypeDisplay": "DATETIME",
+        "ordinalPosition": 2,
+        "constraint": "NULL",
+        "description": null,
+        "tags": []
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/tableConstraints",
+    "value": [
+      {
+        "constraintType": "PRIMARY_KEY",
+        "columns": [
+          "id"
+        ]
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/schemaDefinition",
+    "value": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'"
+  },
+  {
+    "op": "add",
+    "path": "/tableType",
+    "value": "Regular"
+  },
+  {
+    "op": "add",
+    "path": "/description",
+    "value": "审计事件"
+  },
+  {
+    "op": "add",
+    "path": "/tags",
+    "value": []
+  }
+]

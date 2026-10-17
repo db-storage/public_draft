@@ -1,0 +1,31 @@
+{
+  "name": "audit_events",
+  "databaseSchema": "mysql_prod.default.shop",
+  "tableType": "Regular",
+  "columns": [
+    {
+      "name": "id",
+      "dataType": "BIGINT",
+      "dataTypeDisplay": "BIGINT",
+      "ordinalPosition": 1,
+      "constraint": "NOT_NULL"
+    },
+    {
+      "name": "created_at",
+      "dataType": "DATETIME",
+      "dataTypeDisplay": "DATETIME",
+      "ordinalPosition": 2,
+      "constraint": "NULL"
+    }
+  ],
+  "tableConstraints": [
+    {
+      "constraintType": "PRIMARY_KEY",
+      "columns": [
+        "id"
+      ]
+    }
+  ],
+  "schemaDefinition": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'",
+  "description": "审计事件"
+}

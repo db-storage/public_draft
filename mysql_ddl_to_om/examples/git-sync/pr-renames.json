@@ -1,0 +1,5 @@
+{
+  "tableRenames": [
+    {"schemaFqn": "mysql_prod.default.shop", "from": "old_table_name", "to": "new_table_name"}
+  ]
+}

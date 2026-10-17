@@ -127,7 +127,8 @@ def column_request(node: exp.ColumnDef, position: int, warn) -> tuple[dict, list
 
 
 def convert_sql(sql: str, *, service: str, database: str, schema: str,
-                origin: str = '<string>', allow_empty: bool = False) -> tuple[list[dict], list[dict]]:
+                origin: str = '<string>', allow_empty: bool = False,
+                security_classification: str = 'Security') -> tuple[list[dict], list[dict]]:
     """Return standard create-table requests and an explicit metadata-loss report."""
     # MySQL executable comments are not ordinary comments. Do not silently discard them.
     if '/*!' in sql:
@@ -230,7 +231,8 @@ def convert_sql(sql: str, *, service: str, database: str, schema: str,
                 warn(f'{type(prop).__name__} retained in schemaDefinition only')
             else:
                 raise ConversionError(f'{origin}: unsupported table property {type(prop).__name__}')
-        tables.append(request)
+        from comment_annotations import apply_to_request
+        tables.append(apply_to_request(request,security_classification))
     return tables, warnings
 
 
@@ -316,6 +318,7 @@ def main(argv=None) -> int:
     convert.add_argument('--strict', action='store_true', help='Fail on any metadata preserved only in raw DDL')
     convert.add_argument('--validate-sdk', action='store_true')
     convert.add_argument('--allow-empty', action='store_true', help='Allow an explicitly empty full snapshot')
+    convert.add_argument('--security-classification', default='Security')
     submit = commands.add_parser('submit', help='Upsert an already generated bundle')
     submit.add_argument('bundle', type=Path)
     submit.add_argument('--url', default=os.getenv('OM_URL'))
@@ -325,7 +328,8 @@ def main(argv=None) -> int:
     try:
         if args.command == 'convert':
             bundle = convert_files(args.files, service=args.service, database=args.database,
-                                   schema=args.schema, allow_empty=args.allow_empty)
+                                   schema=args.schema, allow_empty=args.allow_empty,
+                                   security_classification=args.security_classification)
             for warning in bundle['warnings']:
                 print('WARNING: ' + warning['table'] + ': ' + warning['message'], file=sys.stderr)
             if args.strict and bundle['warnings']:

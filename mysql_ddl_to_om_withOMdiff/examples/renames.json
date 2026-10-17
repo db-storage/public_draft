@@ -1,0 +1,8 @@
+{
+  "tableRenames": [
+    {"from": "orders", "to": "customer_orders"}
+  ],
+  "columnRenames": [
+    {"table": "customer_orders", "from": "status", "to": "order_status"}
+  ]
+}

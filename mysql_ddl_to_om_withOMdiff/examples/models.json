@@ -1,0 +1,120 @@
+{
+  "formatVersion": 1,
+  "parser": "sqlglot/27.29.0",
+  "scope": {
+    "service": "mysql_prod",
+    "database": "default",
+    "schema": "shop",
+    "fqn": "mysql_prod.default.shop"
+  },
+  "sources": [
+    {
+      "path": "examples/orders.sql",
+      "sha256": "36ed6332103f2498b2c148625618125b8efa7c7dc8da3050c9ec402065fec03e"
+    }
+  ],
+  "tables": [
+    {
+      "name": "orders",
+      "databaseSchema": "mysql_prod.default.shop",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "tenant_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "BIGINT UNSIGNED",
+          "ordinalPosition": 1,
+          "constraint": "NOT_NULL"
+        },
+        {
+          "name": "id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "BIGINT UNSIGNED",
+          "ordinalPosition": 2,
+          "constraint": "NOT_NULL"
+        },
+        {
+          "name": "status",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "VARCHAR(32)",
+          "ordinalPosition": 3,
+          "dataLength": 32,
+          "description": "订单状态",
+          "constraint": "NOT_NULL"
+        },
+        {
+          "name": "amount",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "DECIMAL(18, 2)",
+          "ordinalPosition": 4,
+          "precision": 18,
+          "scale": 2,
+          "constraint": "NOT_NULL"
+        },
+        {
+          "name": "delivery_time",
+          "dataType": "DATETIME",
+          "dataTypeDisplay": "DATETIME(3)",
+          "ordinalPosition": 5,
+          "constraint": "NULL"
+        },
+        {
+          "name": "created_at",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "TIMESTAMP(3)",
+          "ordinalPosition": 6,
+          "constraint": "NOT_NULL"
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "tenant_id",
+            "id"
+          ]
+        },
+        {
+          "constraintType": "UNIQUE",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "schemaDefinition": "CREATE TABLE `shop`.`orders` (\n    `tenant_id` BIGINT UNSIGNED NOT NULL,\n    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n    `status` VARCHAR(32) NOT NULL DEFAULT 'new' COMMENT '订单状态',\n    `amount` DECIMAL(18, 2) NOT NULL,\n    `delivery_time` DATETIME(3) NULL,\n    `created_at` TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n    PRIMARY KEY (`tenant_id`, `id`),\n    UNIQUE KEY `uk_id` (`id`),\n    KEY `idx_status` (`status`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';\n",
+      "description": "订单表"
+    }
+  ],
+  "warnings": [
+    {
+      "source": "examples/orders.sql",
+      "table": "mysql_prod.default.shop.orders",
+      "message": "id: AutoIncrementColumnConstraint retained in schemaDefinition only"
+    },
+    {
+      "source": "examples/orders.sql",
+      "table": "mysql_prod.default.shop.orders",
+      "message": "status: DefaultColumnConstraint retained in schemaDefinition only"
+    },
+    {
+      "source": "examples/orders.sql",
+      "table": "mysql_prod.default.shop.orders",
+      "message": "created_at: DefaultColumnConstraint retained in schemaDefinition only"
+    },
+    {
+      "source": "examples/orders.sql",
+      "table": "mysql_prod.default.shop.orders",
+      "message": "Non-unique index retained in schemaDefinition only"
+    },
+    {
+      "source": "examples/orders.sql",
+      "table": "mysql_prod.default.shop.orders",
+      "message": "EngineProperty retained in schemaDefinition only"
+    },
+    {
+      "source": "examples/orders.sql",
+      "table": "mysql_prod.default.shop.orders",
+      "message": "CharacterSetProperty retained in schemaDefinition only"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "databases": [
+    {"path": "mysql/shop/schemas.sql", "service": "mysql_prod", "database": "default", "schema": "shop"}
+  ]
+}

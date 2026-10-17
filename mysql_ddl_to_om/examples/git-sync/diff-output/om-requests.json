@@ -1,0 +1,412 @@
+{
+  "formatVersion": 1,
+  "sourceOfTruth": "git",
+  "mode": "diff",
+  "comparison": "merge-base",
+  "baseCommit": "90475ffb055757434f172cf4ba3e085f798307a1",
+  "comparisonBaseCommit": "90475ffb055757434f172cf4ba3e085f798307a1",
+  "headCommit": "6094c6b5fee10dbbe7512f865f79968611d312e1",
+  "configHash": "77f503514178a8231da93495ca1113cc64c33f88a0f95aeabd6852ef83088a92",
+  "securityClassification": "Security",
+  "changedPaths": [
+    "mysql/shop/schemas.sql"
+  ],
+  "inputPaths": [
+    "mysql/shop/schemas.sql"
+  ],
+  "sources": [
+    {
+      "scope": "mysql_prod.default.shop",
+      "before": [
+        {
+          "path": "mysql/shop/schemas.sql",
+          "blobId": "88be89f5db317299b8fb2d625f51def4ab424db7",
+          "present": true
+        }
+      ],
+      "after": [
+        {
+          "path": "mysql/shop/schemas.sql",
+          "blobId": "d6c697a801894a89b9c7a896be84ce8e492a5b7a",
+          "present": true
+        }
+      ]
+    }
+  ],
+  "changes": [
+    {
+      "change": "create",
+      "scope": "mysql_prod.default.shop",
+      "name": "audit_events",
+      "payload": {
+        "name": "audit_events",
+        "databaseSchema": "mysql_prod.default.shop",
+        "tableType": "Regular",
+        "columns": [
+          {
+            "name": "id",
+            "dataType": "BIGINT",
+            "dataTypeDisplay": "BIGINT",
+            "ordinalPosition": 1,
+            "constraint": "NOT_NULL"
+          },
+          {
+            "name": "created_at",
+            "dataType": "DATETIME",
+            "dataTypeDisplay": "DATETIME",
+            "ordinalPosition": 2,
+            "constraint": "NULL"
+          }
+        ],
+        "tableConstraints": [
+          {
+            "constraintType": "PRIMARY_KEY",
+            "columns": [
+              "id"
+            ]
+          }
+        ],
+        "schemaDefinition": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'",
+        "description": "审计事件"
+      },
+      "columns": {
+        "added": [
+          "created_at",
+          "id"
+        ],
+        "removed": [],
+        "modified": []
+      }
+    },
+    {
+      "change": "update",
+      "scope": "mysql_prod.default.shop",
+      "name": "users",
+      "payload": {
+        "name": "users",
+        "databaseSchema": "mysql_prod.default.shop",
+        "tableType": "Regular",
+        "columns": [
+          {
+            "name": "id",
+            "dataType": "BIGINT",
+            "dataTypeDisplay": "BIGINT",
+            "ordinalPosition": 1,
+            "constraint": "NOT_NULL"
+          },
+          {
+            "name": "email",
+            "dataType": "VARCHAR",
+            "dataTypeDisplay": "VARCHAR(128)",
+            "ordinalPosition": 2,
+            "dataLength": 128,
+            "description": "用户邮箱",
+            "constraint": "NULL",
+            "tags": [
+              {
+                "tagFQN": "PII.Email",
+                "source": "Classification",
+                "labelType": "Manual",
+                "state": "Confirmed"
+              },
+              {
+                "tagFQN": "Security.L3",
+                "source": "Classification",
+                "labelType": "Manual",
+                "state": "Confirmed"
+              }
+            ]
+          }
+        ],
+        "tableConstraints": [
+          {
+            "constraintType": "PRIMARY_KEY",
+            "columns": [
+              "id"
+            ]
+          }
+        ],
+        "schemaDefinition": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'",
+        "description": "用户"
+      },
+      "columns": {
+        "added": [],
+        "removed": [
+          "obsolete"
+        ],
+        "modified": [
+          "email",
+          "id"
+        ]
+      }
+    },
+    {
+      "change": "drop",
+      "scope": "mysql_prod.default.shop",
+      "name": "legacy_archive"
+    }
+  ],
+  "requests": [
+    {
+      "method": "PUT",
+      "path": "/api/v1/tables",
+      "query": {},
+      "contentType": "application/json",
+      "body": {
+        "name": "audit_events",
+        "databaseSchema": "mysql_prod.default.shop",
+        "tableType": "Regular",
+        "columns": [
+          {
+            "name": "id",
+            "dataType": "BIGINT",
+            "dataTypeDisplay": "BIGINT",
+            "ordinalPosition": 1,
+            "constraint": "NOT_NULL"
+          },
+          {
+            "name": "created_at",
+            "dataType": "DATETIME",
+            "dataTypeDisplay": "DATETIME",
+            "ordinalPosition": 2,
+            "constraint": "NULL"
+          }
+        ],
+        "tableConstraints": [
+          {
+            "constraintType": "PRIMARY_KEY",
+            "columns": [
+              "id"
+            ]
+          }
+        ],
+        "schemaDefinition": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'",
+        "description": "审计事件"
+      },
+      "tableFqn": "mysql_prod.default.shop.audit_events"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/tables",
+      "query": {},
+      "contentType": "application/json",
+      "body": {
+        "name": "users",
+        "databaseSchema": "mysql_prod.default.shop",
+        "tableType": "Regular",
+        "columns": [
+          {
+            "name": "id",
+            "dataType": "BIGINT",
+            "dataTypeDisplay": "BIGINT",
+            "ordinalPosition": 1,
+            "constraint": "NOT_NULL"
+          },
+          {
+            "name": "email",
+            "dataType": "VARCHAR",
+            "dataTypeDisplay": "VARCHAR(128)",
+            "ordinalPosition": 2,
+            "dataLength": 128,
+            "description": "用户邮箱",
+            "constraint": "NULL",
+            "tags": [
+              {
+                "tagFQN": "PII.Email",
+                "source": "Classification",
+                "labelType": "Manual",
+                "state": "Confirmed"
+              },
+              {
+                "tagFQN": "Security.L3",
+                "source": "Classification",
+                "labelType": "Manual",
+                "state": "Confirmed"
+              }
+            ]
+          }
+        ],
+        "tableConstraints": [
+          {
+            "constraintType": "PRIMARY_KEY",
+            "columns": [
+              "id"
+            ]
+          }
+        ],
+        "schemaDefinition": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'",
+        "description": "用户"
+      },
+      "tableFqn": "mysql_prod.default.shop.users"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/tables/name/mysql_prod.default.shop.audit_events",
+      "query": {},
+      "contentType": "application/json-patch+json",
+      "body": [
+        {
+          "op": "add",
+          "path": "/columns",
+          "value": [
+            {
+              "name": "id",
+              "dataType": "BIGINT",
+              "dataTypeDisplay": "BIGINT",
+              "ordinalPosition": 1,
+              "constraint": "NOT_NULL",
+              "description": null,
+              "tags": []
+            },
+            {
+              "name": "created_at",
+              "dataType": "DATETIME",
+              "dataTypeDisplay": "DATETIME",
+              "ordinalPosition": 2,
+              "constraint": "NULL",
+              "description": null,
+              "tags": []
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "path": "/tableConstraints",
+          "value": [
+            {
+              "constraintType": "PRIMARY_KEY",
+              "columns": [
+                "id"
+              ]
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "path": "/schemaDefinition",
+          "value": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'"
+        },
+        {
+          "op": "add",
+          "path": "/tableType",
+          "value": "Regular"
+        },
+        {
+          "op": "add",
+          "path": "/description",
+          "value": "审计事件"
+        },
+        {
+          "op": "add",
+          "path": "/tags",
+          "value": []
+        }
+      ],
+      "tableFqn": "mysql_prod.default.shop.audit_events"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/tables/name/mysql_prod.default.shop.users",
+      "query": {},
+      "contentType": "application/json-patch+json",
+      "body": [
+        {
+          "op": "add",
+          "path": "/columns",
+          "value": [
+            {
+              "name": "id",
+              "dataType": "BIGINT",
+              "dataTypeDisplay": "BIGINT",
+              "ordinalPosition": 1,
+              "constraint": "NOT_NULL",
+              "description": null,
+              "tags": []
+            },
+            {
+              "name": "email",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(128)",
+              "ordinalPosition": 2,
+              "dataLength": 128,
+              "description": "用户邮箱",
+              "constraint": "NULL",
+              "tags": [
+                {
+                  "tagFQN": "PII.Email",
+                  "source": "Classification",
+                  "labelType": "Manual",
+                  "state": "Confirmed"
+                },
+                {
+                  "tagFQN": "Security.L3",
+                  "source": "Classification",
+                  "labelType": "Manual",
+                  "state": "Confirmed"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "path": "/tableConstraints",
+          "value": [
+            {
+              "constraintType": "PRIMARY_KEY",
+              "columns": [
+                "id"
+              ]
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "path": "/schemaDefinition",
+          "value": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'"
+        },
+        {
+          "op": "add",
+          "path": "/tableType",
+          "value": "Regular"
+        },
+        {
+          "op": "add",
+          "path": "/description",
+          "value": "用户"
+        },
+        {
+          "op": "add",
+          "path": "/tags",
+          "value": []
+        }
+      ],
+      "tableFqn": "mysql_prod.default.shop.users"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/tables/name/mysql_prod.default.shop.legacy_archive",
+      "contentType": "application/json",
+      "query": {
+        "hardDelete": "false",
+        "recursive": "true"
+      },
+      "tableFqn": "mysql_prod.default.shop.legacy_archive"
+    }
+  ],
+  "warnings": [],
+  "counts": {
+    "create": 1,
+    "update": 1,
+    "drop": 1,
+    "rename": 0,
+    "upsert": 0
+  },
+  "limitations": [
+    "No OM reads, drift detection or annotation migration.",
+    "Table/column renames are not inferred from similarity.",
+    "Requests are not a transaction; serialize publication by DB and commit order.",
+    "Parent service/database/schema must already exist."
+  ],
+  "artifactHash": "1606b119f5509c09c58d0ebb038dd583d61655f9b3e9864ffca93427bc143200"
+}
