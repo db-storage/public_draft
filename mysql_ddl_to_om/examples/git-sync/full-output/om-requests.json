@@ -58,8 +58,8 @@
             ]
           }
         ],
-        "schemaDefinition": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'",
-        "description": "审计事件"
+        "schemaDefinition": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='Audit events'",
+        "description": "Audit events"
       },
       "columns": {
         "added": [
@@ -92,7 +92,7 @@
             "dataTypeDisplay": "VARCHAR(128)",
             "ordinalPosition": 2,
             "dataLength": 128,
-            "description": "用户邮箱",
+            "description": "User email address",
             "constraint": "NULL",
             "tags": [
               {
@@ -118,8 +118,8 @@
             ]
           }
         ],
-        "schemaDefinition": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'",
-        "description": "用户"
+        "schemaDefinition": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT 'User email address\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='Users'",
+        "description": "Users"
       },
       "columns": {
         "added": [
@@ -165,8 +165,8 @@
             ]
           }
         ],
-        "schemaDefinition": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'",
-        "description": "审计事件"
+        "schemaDefinition": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='Audit events'",
+        "description": "Audit events"
       },
       "tableFqn": "mysql_prod.default.shop.audit_events"
     },
@@ -193,7 +193,7 @@
             "dataTypeDisplay": "VARCHAR(128)",
             "ordinalPosition": 2,
             "dataLength": 128,
-            "description": "用户邮箱",
+            "description": "User email address",
             "constraint": "NULL",
             "tags": [
               {
@@ -219,8 +219,8 @@
             ]
           }
         ],
-        "schemaDefinition": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'",
-        "description": "用户"
+        "schemaDefinition": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT 'User email address\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='Users'",
+        "description": "Users"
       },
       "tableFqn": "mysql_prod.default.shop.users"
     },
@@ -269,7 +269,7 @@
         {
           "op": "add",
           "path": "/schemaDefinition",
-          "value": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'"
+          "value": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='Audit events'"
         },
         {
           "op": "add",
@@ -279,7 +279,7 @@
         {
           "op": "add",
           "path": "/description",
-          "value": "审计事件"
+          "value": "Audit events"
         },
         {
           "op": "add",
@@ -314,7 +314,7 @@
               "dataTypeDisplay": "VARCHAR(128)",
               "ordinalPosition": 2,
               "dataLength": 128,
-              "description": "用户邮箱",
+              "description": "User email address",
               "constraint": "NULL",
               "tags": [
                 {
@@ -348,7 +348,7 @@
         {
           "op": "add",
           "path": "/schemaDefinition",
-          "value": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'"
+          "value": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT 'User email address\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='Users'"
         },
         {
           "op": "add",
@@ -358,7 +358,7 @@
         {
           "op": "add",
           "path": "/description",
-          "value": "用户"
+          "value": "Users"
         },
         {
           "op": "add",

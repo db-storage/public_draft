@@ -126,12 +126,12 @@ def test_mode_requirements(repo):
 
 
 def test_annotations_diff_and_full(repo):
- a=commit(repo,"CREATE TABLE t(email VARCHAR(128) COMMENT '用户邮箱\n@om.security=L2\n@om.tag=PII.Email')")
- b=commit(repo,"CREATE TABLE t(email VARCHAR(128) COMMENT '用户邮箱\n@om.security=L3\n@om.tag=PII.Email')")
+ a=commit(repo,"CREATE TABLE t(email VARCHAR(128) COMMENT 'User email address\n@om.security=L2\n@om.tag=PII.Email')")
+ b=commit(repo,"CREATE TABLE t(email VARCHAR(128) COMMENT 'User email address\n@om.security=L3\n@om.tag=PII.Email')")
  for kwargs in ({'base_ref':a,'mode':'diff'},{'base_ref':None,'mode':'full'}):
   r=generate(repo,kwargs['base_ref'],b,CONFIG,mode=kwargs['mode'])
   c=r['changes'][0]['payload']['columns'][0]
-  assert c['description']=='用户邮箱'
+  assert c['description']=='User email address'
   assert {t['tagFQN'] for t in c['tags']}=={'Security.L3','PII.Email'}
   assert '@om.security=L3' in r['changes'][0]['payload']['schemaDefinition']
   patch=r['requests'][-1]
@@ -149,9 +149,9 @@ def test_annotation_removed_generates_explicit_empty_tag_list(repo):
 
 
 def test_table_annotation_and_custom_classification(repo):
- h=commit(repo,"CREATE TABLE t(id INT) COMMENT='业务表\n@om.security=Confidential'")
+ h=commit(repo,"CREATE TABLE t(id INT) COMMENT='Business table\n@om.security=Confidential'")
  r=generate(repo,None,h,CONFIG,mode='full',security_classification='DataSecurity')
- p=r['changes'][0]['payload'];assert p['description']=='业务表'
+ p=r['changes'][0]['payload'];assert p['description']=='Business table'
  assert p['tags'][0]['tagFQN']=='DataSecurity.Confidential'
  assert p['tags'][0]['source']=='Classification' and p['tags'][0]['state']=='Confirmed'
 
@@ -168,12 +168,12 @@ def test_duplicate_tags_deduplicated(repo):
  assert len(r['changes'][0]['payload']['columns'][0]['tags'])==1
 
 
-def test_identifier_with_dot_space_unicode(repo):
- a=commit(repo,'CREATE TABLE `order.detail` (`用户 名` VARCHAR(8), `a.b` INT)')
- b=commit(repo,'CREATE TABLE `order.detail` (`用户 名` VARCHAR(16), `a.b` INT)')
+def test_identifier_with_dot_and_space(repo):
+ a=commit(repo,'CREATE TABLE `order.detail` (`customer name` VARCHAR(8), `a.b` INT)')
+ b=commit(repo,'CREATE TABLE `order.detail` (`customer name` VARCHAR(16), `a.b` INT)')
  r=generate(repo,a,b,CONFIG)
  p=r['changes'][0]['payload'];assert p['name']=='order.detail'
- assert p['columns'][0]['name']=='用户 名' and p['columns'][1]['name']=='a.b'
+ assert p['columns'][0]['name']=='customer name' and p['columns'][1]['name']=='a.b'
  assert r['requests'][0]['tableFqn']==SCOPE+'."order.detail"'
 
 

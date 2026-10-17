@@ -38,7 +38,7 @@
   {
     "op": "add",
     "path": "/schemaDefinition",
-    "value": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='审计事件'"
+    "value": "CREATE TABLE `audit_events` (`id` BIGINT NOT NULL, `created_at` DATETIME, PRIMARY KEY (`id`)) COMMENT='Audit events'"
   },
   {
     "op": "add",
@@ -48,7 +48,7 @@
   {
     "op": "add",
     "path": "/description",
-    "value": "审计事件"
+    "value": "Audit events"
   },
   {
     "op": "add",

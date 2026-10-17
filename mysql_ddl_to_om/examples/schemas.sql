@@ -1,13 +1,13 @@
 CREATE TABLE shop.customers (
   id BIGINT NOT NULL,
-  name VARCHAR(128) COMMENT '客户名称',
+  name VARCHAR(128) COMMENT 'Customer name',
   PRIMARY KEY (id)
-) COMMENT='客户表';
+) COMMENT='Customers table';
 
 CREATE TABLE shop.customer_orders (
   id BIGINT NOT NULL,
   customer_id BIGINT NOT NULL,
-  order_status VARCHAR(32) COMMENT '订单状态',
+  order_status VARCHAR(32) COMMENT 'Order status',
   PRIMARY KEY (id),
   CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES shop.customers(id)
-) COMMENT='客户订单';
+) COMMENT='Customer orders';

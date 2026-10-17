@@ -18,7 +18,7 @@
         "dataTypeDisplay": "VARCHAR(128)",
         "ordinalPosition": 2,
         "dataLength": 128,
-        "description": "用户邮箱",
+        "description": "User email address",
         "constraint": "NULL",
         "tags": [
           {
@@ -52,7 +52,7 @@
   {
     "op": "add",
     "path": "/schemaDefinition",
-    "value": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT '用户邮箱\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='用户'"
+    "value": "CREATE TABLE `users` (`id` BIGINT NOT NULL, `email` VARCHAR(128) COMMENT 'User email address\\n@om.security=L3\\n@om.tag=PII.Email', PRIMARY KEY (`id`)) COMMENT='Users'"
   },
   {
     "op": "add",
@@ -62,7 +62,7 @@
   {
     "op": "add",
     "path": "/description",
-    "value": "用户"
+    "value": "Users"
   },
   {
     "op": "add",

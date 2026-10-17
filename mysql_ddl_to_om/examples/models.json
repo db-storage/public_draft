@@ -39,7 +39,7 @@
           "dataTypeDisplay": "VARCHAR(32)",
           "ordinalPosition": 3,
           "dataLength": 32,
-          "description": "订单状态",
+          "description": "Order status",
           "constraint": "NOT_NULL"
         },
         {
@@ -81,8 +81,8 @@
           ]
         }
       ],
-      "schemaDefinition": "CREATE TABLE `shop`.`orders` (\n    `tenant_id` BIGINT UNSIGNED NOT NULL,\n    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n    `status` VARCHAR(32) NOT NULL DEFAULT 'new' COMMENT '订单状态',\n    `amount` DECIMAL(18, 2) NOT NULL,\n    `delivery_time` DATETIME(3) NULL,\n    `created_at` TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n    PRIMARY KEY (`tenant_id`, `id`),\n    UNIQUE KEY `uk_id` (`id`),\n    KEY `idx_status` (`status`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';\n",
-      "description": "订单表"
+      "schemaDefinition": "CREATE TABLE `shop`.`orders` (\n    `tenant_id` BIGINT UNSIGNED NOT NULL,\n    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n    `status` VARCHAR(32) NOT NULL DEFAULT 'new' COMMENT 'Order status',\n    `amount` DECIMAL(18, 2) NOT NULL,\n    `delivery_time` DATETIME(3) NULL,\n    `created_at` TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n    PRIMARY KEY (`tenant_id`, `id`),\n    UNIQUE KEY `uk_id` (`id`),\n    KEY `idx_status` (`status`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Orders table';\n",
+      "description": "Orders table"
     }
   ],
   "warnings": [

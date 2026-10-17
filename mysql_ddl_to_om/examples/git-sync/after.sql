@@ -1,12 +1,12 @@
 CREATE TABLE users (
   id BIGINT NOT NULL,
-  email VARCHAR(128) COMMENT '用户邮箱
+  email VARCHAR(128) COMMENT 'User email address
 @om.security=L3
 @om.tag=PII.Email',
   PRIMARY KEY (id)
-) COMMENT='用户';
+) COMMENT='Users';
 CREATE TABLE audit_events (
   id BIGINT NOT NULL,
   created_at DATETIME,
   PRIMARY KEY (id)
-) COMMENT='审计事件';
+) COMMENT='Audit events';

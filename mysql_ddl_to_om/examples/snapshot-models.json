@@ -32,7 +32,7 @@
           "dataTypeDisplay": "VARCHAR(128)",
           "ordinalPosition": 2,
           "dataLength": 128,
-          "description": "客户名称",
+          "description": "Customer name",
           "constraint": "NULL"
         }
       ],
@@ -44,8 +44,8 @@
           ]
         }
       ],
-      "schemaDefinition": "CREATE TABLE shop.customers (id BIGINT NOT NULL, name VARCHAR(128) COMMENT '客户名称', PRIMARY KEY (id)) COMMENT='客户表';",
-      "description": "客户表"
+      "schemaDefinition": "CREATE TABLE shop.customers (id BIGINT NOT NULL, name VARCHAR(128) COMMENT 'Customer name', PRIMARY KEY (id)) COMMENT='Customers table';",
+      "description": "Customers table"
     },
     {
       "name": "customer_orders",
@@ -72,7 +72,7 @@
           "dataTypeDisplay": "VARCHAR(32)",
           "ordinalPosition": 3,
           "dataLength": 32,
-          "description": "订单状态",
+          "description": "Order status",
           "constraint": "NULL"
         }
       ],
@@ -93,8 +93,8 @@
           ]
         }
       ],
-      "schemaDefinition": "CREATE TABLE shop.customer_orders (id BIGINT NOT NULL, customer_id BIGINT NOT NULL, order_status VARCHAR(32) COMMENT '订单状态', PRIMARY KEY (id), CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES shop.customers (id)) COMMENT='客户订单';",
-      "description": "客户订单"
+      "schemaDefinition": "CREATE TABLE shop.customer_orders (id BIGINT NOT NULL, customer_id BIGINT NOT NULL, order_status VARCHAR(32) COMMENT 'Order status', PRIMARY KEY (id), CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES shop.customers (id)) COMMENT='Customer orders';",
+      "description": "Customer orders"
     }
   ],
   "warnings": []

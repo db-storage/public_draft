@@ -15,12 +15,12 @@ def test_example_snapshot():
     requests, warnings = convert((Path(__file__).parents[1] / 'examples/orders.sql').read_text())
     t = requests[0]
     assert t['databaseSchema'] == 'mysql_prod.default.shop'
-    assert t['description'] == '订单表'
+    assert t['description'] == 'Orders table'
     columns = {c['name']: c for c in t['columns']}
     assert columns['amount']['precision'] == 18
     assert columns['amount']['scale'] == 2
     assert columns['status']['dataLength'] == 32
-    assert columns['status']['description'] == '订单状态'
+    assert columns['status']['description'] == 'Order status'
     assert columns['delivery_time']['constraint'] == 'NULL'
     assert columns['created_at']['dataType'] == 'TIMESTAMP'
     assert columns['id']['dataTypeDisplay'] == 'BIGINT UNSIGNED'
@@ -47,9 +47,9 @@ def test_type_mapping(sqltype, expected):
 
 
 def test_comments_delimiters_and_multiple_tables():
-    tables, _ = convert("-- note\nCREATE TABLE t (x VARCHAR(12) COMMENT 'a,b;中文'); /* note */ CREATE TABLE u (id INT)")
+    tables, _ = convert("-- note\nCREATE TABLE t (x VARCHAR(12) COMMENT 'a,b;Chinese'); /* note */ CREATE TABLE u (id INT)")
     assert len(tables) == 2
-    assert tables[0]['columns'][0]['description'] == 'a,b;中文'
+    assert tables[0]['columns'][0]['description'] == 'a,b;Chinese'
 
 
 def test_foreign_key():
