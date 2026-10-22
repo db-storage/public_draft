@@ -1,3 +1,11 @@
+
+背景：当前公司使用temporal cloud，身份验证是基于okta，用了corp AD这个应用的RBAC_temporalCloud_user 做UI的身份验证，具体权限是通过git->terraform->temporal cloud同步的，支持按照user和group配置权限。后续希望自部署Temporal。
+目的：我当前考虑自部署的情况下的human user management的权限问题。依然可以用okta。从UI登陆认证，希望用okta做sso。
+问题1: 是搞个单独的okta应用，比如叫TemporalLocal，还是直接用corp AD这个应用的RBAC_temporalLocal_user?
+问题2: 权限管理选择：1）全部在git配置？包括user和group权限都支持？2）git只管group的权限，然后okta管理user到group的关系？分别有什么好处？
+要求：希望你的回答给予真实的文档和代码分析，然后简练一点，比如借助一些表格比较。
+
+
 **建议方案：独立 Okta 应用 `TemporalLocal` 负责 SSO；Okta 管理登录资格及组成员；Git 独立管理 Temporal 权限，通过已有流程同步到自部署集群。**
 
 ## 一、SSO：应用、用户、组分别负责什么？
