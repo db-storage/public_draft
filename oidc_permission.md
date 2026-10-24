@@ -1,4 +1,44 @@
 
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser as Web Browser
+    participant UI as Temporal UI Server
+    participant Okta
+
+    User->>Browser: 1. Open Temporal UI
+    Browser->>UI: 2. Sign in
+
+    rect rgb(230, 240, 255)
+        UI-->>Browser: 3. Redirect to Okta with client_id, redirect_uri, scope=openid, response_type=code, state
+    end
+
+    Browser->>Okta: 4. Request authorization with these parameters
+
+    rect rgb(230, 240, 255)
+        Okta->>Okta: 5. Authenticate user and check app access
+    end
+
+    Okta-->>Browser: 6. Redirect to callback with code + state
+    Browser->>UI: 7. Send code + state to callback
+
+    rect rgb(230, 240, 255)
+        UI->>Okta: 8. Exchange code using client_id, client_secret, redirect_uri, grant_type=authorization_code
+    end
+
+    Okta-->>UI: 9. Return ID Token + Access Token
+    UI->>UI: 10. Validate login response and establish session
+    UI-->>Browser: 11. Set session cookie and open UI
+```
+配置位置	需要准备 / 配置
+Okta	创建 OIDC Web Application，启用 Authorization Code
+Okta	注册 UI 的回调地址 redirect_uri，为用户或 Group 分配应用访问权限
+Temporal UI Server	TEMPORAL_AUTH_ENABLED=true
+Temporal UI Server	TEMPORAL_AUTH_PROVIDER_URL：Okta 的 OIDC Issuer URL
+Temporal UI Server	TEMPORAL_AUTH_CLIENT_ID、TEMPORAL_AUTH_CLIENT_SECRET：来自 Okta 应用
+Temporal UI Server	TEMPORAL_AUTH_CALLBACK_URL：与 Okta 注册的 redirect_uri 一致
+Temporal UI Server	TEMPORAL_AUTH_SCOPES：包含 openid，按需添加 profile,email
+
 背景：当前公司使用temporal cloud，身份验证是基于okta，用了corp AD这个应用的RBAC_temporalCloud_user 做UI的身份验证，具体权限是通过git->terraform->temporal cloud同步的，支持按照user和group配置权限。后续希望自部署Temporal。
 目的：我当前考虑自部署的情况下的human user management的权限问题。依然可以用okta。从UI登陆认证，希望用okta做sso。
 问题1: 是搞个单独的okta应用，比如叫TemporalLocal，还是直接用corp AD这个应用的RBAC_temporalLocal_user?
