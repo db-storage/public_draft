@@ -1,4 +1,209 @@
 
+(issuer, sub) 是用户的稳定身份标识；Authorizer 通常不需要用户名，只需要该用户已经解析出来的权限。
+字段	含义	示例
+iss（issuer）	哪个身份提供方签发了 token	https://company.okta.com/oauth2/default
+sub（subject）	该签发方为用户分配的唯一标识	00u123abc
+email / name	方便人识别的邮箱或姓名	alice@example.com / Alice
+
+
+使用两者组合，是因为不同 issuer 可能出现相同的 sub；邮箱、用户名也可能修改。
+
+例如 Okta 返回的 JWT 内容为：
+{
+  "iss": "https://company.okta.com/oauth2/default",
+  "sub": "00u123abc",
+  "email": "alice@example.com",
+  "groups": ["temporal-orders-readers"]
+}
+
+鉴权过程是：
+步骤	输入 → 结果
+ClaimMapper 验证 token	确认这确实是可信 Okta 签发的有效 token
+识别用户	(iss, sub) 标识该用户，email 用于展示和审计
+解析权限	temporal-orders-readers → orders-prod: read
+Authorizer 判断请求	请求读取 orders-prod → 允许；请求启动 Workflow → 拒绝
+
+
+所以不是 Authorizer 拿用户名再查权限，而是 ClaimMapper 先把身份转换成权限，Authorizer 再判断权限是否允许当前操作。
+
+如果你们要支持“直接给 Alice 授权”，数据库可以记录：
+用户身份键	展示邮箱	Namespace	Role
+(Okta issuer, 00u123abc)	alice@example.com	orders-prod	write
+
+
+这时 ClaimMapper 根据 (iss, sub) 查询直接授权，再生成 Claims。用户名用于人看，稳定身份 ID 用于关联，角色权限用于鉴权。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ClaimMapper 把身份转成权限，参照什么转呢？
+
+
+
+
+
+
+
+
+
+
+
+
+
+参照你们预先配置的“授权规则”转换。ClaimMapper 不会从身份本身推断出权限。
+
+比如，你们在 Git 或权限数据库中维护：
+主体类型	主体	Namespace	权限
+Okta group	orders-developers	orders-dev	read, write
+Okta group	orders-oncall	orders-prod	read
+SPIFFE ID	spiffe://corp/orders-worker	orders-prod	worker
+
+
+ClaimMapper 处理两类请求时：
+请求	从已验证凭据中提取	查询上述规则	输出 Temporal Claims
+Alice 通过 UI 操作	groups: ["orders-oncall"]	该组有生产订单 namespace 的读权限	orders-prod → RoleReader
+订单 Worker 调用	spiffe://corp/orders-worker	该工作负载有 worker 权限	orders-prod → RoleWorker
+
+
+随后 Authorizer 拿这些 Claims，与当前请求的 API 和 namespace 比较，决定允许还是拒绝。
+
+因此三部分各有一个依据：
+部分	依据什么
+认证	Okta 签名 / SPIRE 证书，确认“你是谁”
+ClaimMapper	你们维护的授权规则，得到“你有什么权限”
+Authorizer	API 所需角色，判断“当前操作能不能执行”
+
+
+另外，内置 JWT ClaimMapper 是另一种方式：它直接读取 token 中已经包含的 permissions，例如 orders-prod:read。你们如果只在 token 中放 Okta groups，就需要自定义 ClaimMapper，完成 group → namespace 权限 的查询与转换。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+那对于工作负载,SPIFFE ID 怎么变换成role?
+
+
+
+
+
+
+
+
+
+
+
+
+
+通过预先维护的 SPIFFE ID → namespace → role 授权规则，由自定义 ClaimMapper 查询并转换。SPIFFE ID 本身不包含 Temporal role。
+
+例如，权限数据库中保存：
+SPIFFE ID	Namespace	Roles
+spiffe://corp/orders-worker	orders-prod	worker
+spiffe://corp/orders-api	orders-prod	write
+spiffe://corp/orders-api	orders-dev	read, write
+
+
+以订单 Worker 为例：
+步骤	具体动作
+1. SDK 连接	使用 SPIRE 签发的 X.509-SVID 建立 mTLS 连接
+2. Frontend 验证	TLS 层验证客户端证书链
+3. ClaimMapper 提取身份	从已验证证书的 URI SAN 读取 spiffe://corp/orders-worker
+4. 查询授权规则	用完整 SPIFFE ID 查询数据库或本地缓存
+5. 构造 Claims	将 worker 转成 Temporal 的 RoleWorker
+6. Authorizer 检查	判断当前 API、namespace 是否被这些角色允许
+
+
+第 5 步的输出概念上是：
+Claims{
+    Subject: "spiffe://corp/orders-worker",
+    Namespaces: map[string]Role{
+        "orders-prod": RoleWorker,
+    },
+}
+
+这条授权规则由你们的平台管理员配置，例如 Git PR → CI → 权限数据库；SPIRE 只负责签发和更新身份证明。即使某个服务拿到了合法的 SVID，如果授权表中没有对应规则，也应拒绝其业务请求。
+
+不建议仅凭 ID 名称含有 worker 就自动赋予 worker 权限，应明确配置完整身份与权限的映射。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ClaimMapper代码能区分请求来自于workload还是user么？
+
+
+
+
+
+
+
+
+
+
+
+
+
+可以，但需要你们在自定义 ClaimMapper 中定义区分规则；Temporal 不会自动替你判断是人还是程序。
+
+GetClaims(authInfo) 能获得两类信息：
+输入	内容	可以识别什么
+authInfo.AuthToken	gRPC 请求携带的 Bearer token	验证 Okta JWT 后识别用户
+authInfo.TLSConnection	TLS 连接信息，包括客户端证书	从已验证证书的 URI SAN 识别 SPIFFE 工作负载
+
+
+你们的方案中，UI Server 本身也是 workload，所以不能简单按“有证书就是程序、有 token 就是人”区分。 应结合可信调用方判断：
+客户端证书身份	用户 token	按什么身份鉴权
+指定的 UI Server SPIFFE ID	有效 Okta 用户 JWT	用户
+指定的 UI Server SPIFFE ID	缺失或无效	拒绝
+已授权的业务 SPIFFE ID	无	工作负载
+业务 SPIFFE ID	有	按当前方案拒绝，避免身份混用
+
+
+伪代码：
+peerID := verifiedSPIFFEID(authInfo.TLSConnection)
+
+if peerID == trustedUIServerID {
+    user := verifyOktaUserToken(authInfo.AuthToken)
+    return claimsForUser(user)
+}
+
+if authInfo.AuthToken != "" {
+    return deny("unexpected token")
+}
+
+return claimsForWorkload(peerID)
+
+这里的 verifyOktaUserToken 必须验证签名、issuer、audience 等，并确保是约定的用户 token。区分依据是经过验证的凭据及入口规则，不是请求中的用户名、SDK identity 或自报的 user/workload 字段。
+
+
 ```mermaid
 sequenceDiagram
     actor User
