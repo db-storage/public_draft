@@ -1,6 +1,7 @@
 ### 总结下，感觉有多种方式
 - 完全不关注Group，拿到user，自查表
-- JWT带 permission claim, 这需要有provider，自己的auth平台给okta转的: 例如：
+- JWT带 permission claim, 这需要有provider，自己的auth平台给okta转的。但是长度有些限制，一般也就是4k/8kb这种，因为放在grpc meta中，取链路中最小值. 当然也可以用*或者啥的
+  例如：
   ```yaml
   {
   "iss": "https://company.okta.com/oauth2/default",
