@@ -1,3 +1,22 @@
+### 总结下，感觉有多种方式
+- 完全不关注Group，拿到user，自查表
+- JWT带 permission claim, 这需要有provider，自己的auth平台给okta转的: 例如：
+  ```yaml
+  {
+  "iss": "https://company.okta.com/oauth2/default",
+  "sub": "00u123abc",
+  "aud": "temporal-frontend",
+  "exp": 1793000000,
+  "permissions": [
+    "orders-dev:write",
+    "orders-prod:read"
+  ]
+}```
+- 使用JWT token的group信息，用组名规则，比如 namespaceA-read, namespaceA-admin。这有个问题：如果一个人能访问多个namespace，需要加入很多组。但是JWT是有长度限制的。
+- 另外okta带的可能是role + permission，
+- 使用group，但是不依赖于组名，也搞ACL映射表，ACL 映射表可以是多种，AI 还提到一个git作为source of truth的方式： 就是自己定义文件格式，FrontEnd直接去加载它。
+
+
 
 (issuer, sub) 是用户的稳定身份标识；Authorizer 通常不需要用户名，只需要该用户已经解析出来的权限。
 字段	含义	示例
