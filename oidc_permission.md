@@ -1,5 +1,5 @@
 ### 总结下，感觉有多种方式
-- 完全不关注Group，拿到user，自查表
+- 完全不关注Group，拿到user，自查表。 这种tf文件可以沿用当前格式，减少业务团队提交 PR的成本。自己搞个 terraform provider即可。
 - JWT带 permission claim, 这需要有provider，自己的auth平台给okta转的。但是长度有些限制，一般也就是4k/8kb这种，因为放在grpc meta中，取链路中最小值. 当然也可以用*或者啥的
   例如：
   ```yaml
