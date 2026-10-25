@@ -1,3 +1,89 @@
+## token 背景知识
+- tokens returned from okta
+```jsonc
+{
+  // Bearer: possession of the token is sufficient to use it; no private-key proof is required.
+  "token_type": "Bearer",
+
+  // Access token lifetime in seconds; does not describe ID token or refresh token expiry.
+  "expires_in": 3600,
+
+  // Granted scopes: openid = OIDC sign-in; profile = basic user details;
+  // email = email address and verification status; offline_access = request refresh-token access.
+  "scope": "openid profile email offline_access",
+
+  // Token sent to the target API to authenticate requests and enforce granted permissions.
+  "access_token": "...",
+
+  // JWT containing identity claims, intended for the client that initiated sign-in.
+  "id_token": "...",
+
+  // Credential used by the helper to obtain new tokens without repeating interactive sign-in.
+  "refresh_token": "..."
+}
+```
+- example of access token
+```jsonc
+{
+  // Issuer: the Okta authorization server that issued this token.
+  "iss": "https://company.okta.com/oauth2/aus123",
+
+  // Subject: identifies the authenticated user.
+  "sub": "00u123example",
+
+  // Audience: the API intended to accept this access token.
+  "aud": "api://temporal",
+
+  // Client ID: the OAuth application that requested this token.
+  "cid": "temporal-cli-client-id",
+
+  // Issued-at time: Unix timestamp in seconds.
+  "iat": 1792886400,
+
+  // Expiration time: Unix timestamp; this token expires one hour after issuance.
+  "exp": 1792890000,
+
+  // OAuth scopes granted to this access token.
+  "scp": ["openid", "profile", "email", "offline_access"],
+
+  // Custom claim: namespace permissions, explicitly configured in Okta.
+  // Example format: "<namespace>:<role>"; must match the Temporal ClaimMapper.
+  "permissions": ["dev:write", "prod:read"]
+}
+```
+
+- example of id token 
+```jsonc
+{
+  // Issuer: the Okta authorization server that issued this token.
+  "iss": "https://company.okta.com/oauth2/aus123",
+
+  // Subject: identifies the authenticated user.
+  "sub": "00u123example",
+
+  // Audience: the client that initiated sign-in, rather than the target API.
+  "aud": "temporal-cli-client-id",
+
+  // Issued-at time: Unix timestamp in seconds.
+  "iat": 1792886400,
+
+  // Expiration time: this ID token's own expiry, independent of access-token expiry.
+  "exp": 1792890000,
+
+  // User's display name; included here as an example profile claim.
+  "name": "Alice Zhang",
+
+  // User's email address; availability depends on scopes and claim configuration.
+  "email": "alice@company.com",
+
+  // Indicates whether the identity provider has verified the email address.
+  "email_verified": true,
+
+  // Optional custom claim: groups included through explicit Okta configuration.
+  "groups": ["temporal-developers"]
+}
+```
+
 ### 总结下，感觉有多种方式
 - 完全不关注Group，拿到user，自查表。 这种tf文件可以沿用当前格式，减少业务团队提交 PR的成本。自己搞个 terraform provider即可。
 - JWT带 permission claim, 这需要有provider，自己的auth平台给okta转的。但是长度有些限制，一般也就是4k/8kb这种，因为放在grpc meta中，取链路中最小值. 当然也可以用*或者啥的
