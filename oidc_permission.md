@@ -57,27 +57,115 @@ Authorizer 判断请求	请求读取 orders-prod → 允许；请求启动 Workf
 
 
 
+## CLI 登陆和鉴权流程
+**对于你们的 self-hosted + Okta，浏览器登录可以实现，但需要配套登录工具。采用 CLI 本地回调的方案时，token 由本机登录工具获取、保存，再交给 Temporal CLI；UI Server 不参与。**
+
+我读取了当前 CLI、UI Server 的源码及文档，有一个重要补充：**CLI 已有 OAuth Access Token 的读取、刷新逻辑，但不能据此认为它自带通用的 Okta 浏览器登录能力，更不能认为它会自动管理 ID Token。**
+
+### 源码实际提供了什么
+
+| 代码 | 核对结果 |
+|---|---|
+| CLI [`cliext/client.go`](https://github.com/temporalio/cli/blob/5730c955d608c88bdc79de7910fe05a826cea314/cliext/client.go) | 接收 gRPC metadata；读取 OAuth 配置；请求时返回 `AccessToken`，必要时刷新并保存 |
+| CLI [`cliext/config.oauth.go`](https://github.com/temporalio/cli/blob/5730c955d608c88bdc79de7910fe05a826cea314/cliext/config.oauth.go) | 保存 access token、refresh token、过期时间和 OAuth 配置；没有专门保存 ID Token 的字段 |
+| UI Server [`server/route/auth.go`](https://github.com/temporalio/ui-server/blob/9ba7e3c8b2c23a7dfc6597cc688ff0b5fe455f46/server/route/auth.go) | UI 登录回调由 UI Server 接收，并调用 `ExchangeCode` 兑换 token |
+| UI Server [`server/auth/auth.go`](https://github.com/temporalio/ui-server/blob/9ba7e3c8b2c23a7dfc6597cc688ff0b5fe455f46/server/auth/auth.go) | UI 登录 token 会写入浏览器 Cookie；支持把 ID Token 替换为发往后端的 Bearer 凭据 |
+
+以上是当前 `main` 的代码检查结果，**不保证你们安装的发行版已经包含全部能力**。官方文档中的 `temporal cloud login` 则属于 Cloud 扩展。
+
+参考：[Use with Temporal Cloud](https://docs.temporal.io/cli/cloud)。
+
+### 建议的 CLI 登录与鉴权流程
+
+下面按你们倾向的 **ID Token** 画。图中的 **Login Helper 是需要复用或补充的本地工具，不是原生 `temporal login` 命令**。为控制图宽，Frontend 内部的 ClaimMapper、Authorizer 用自身调用表示。
+
+```mermaid
+sequenceDiagram
+    participant H as Local Login Helper
+    participant B as Browser
+    participant O as Okta
+    participant C as Temporal CLI
+    participant F as Frontend Server
+
+    H->>H: 1. Start loopback callback listener<br/>Generate state, nonce and PKCE verifier
+    H->>B: 2. Open Okta authorization URL
+
+    rect rgb(230, 240, 255)
+        B->>O: 3. Authorize<br/>client_id, redirect_uri, scope=openid<br/>state, nonce, code_challenge
+    end
+
+    O->>O: 4. Authenticate user and MFA<br/>Check app assignment and policy
+    O-->>B: 5. Redirect to registered loopback callback<br/>code + state
+    B->>H: 6. Deliver code + state
+
+    rect rgb(230, 240, 255)
+        H->>O: 7. Exchange code for tokens<br/>client_id, redirect_uri, code_verifier
+        O-->>H: 8. ID Token + Access Token<br/>Optional Refresh Token
+    end
+
+    H->>H: 9. Verify state and ID Token<br/>Validate signature, issuer, audience and nonce<br/>Cache credentials locally
+    H->>C: 10. Run command with ID Token
+
+    rect rgb(230, 240, 255)
+        C->>F: 11. gRPC request over TLS<br/>authorization: Bearer ID_TOKEN
+        F->>F: 12. ClaimMapper<br/>Verify token and map claims to namespace roles
+        F->>F: 13. Authorizer<br/>Check roles against API and namespace
+    end
+
+    F->>F: 14. Execute API if allowed
+    F-->>C: 15. Return result
+```
+
+PKCE 的 code 兑换由本地应用完成，Okta 返回 ID Token、Access Token，以及可选的 Refresh Token；浏览器在回调中通常传递的是 **code，不是最终 JWT**。
+
+参考：[Okta Authorization Code with PKCE](https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/)。
+
+### Token 到底由谁拿着？
+
+| 场景 | 谁兑换 token | 谁保存 / 管理 | 请求经过 UI Server 吗？ |
+|---|---|---|---|
+| **CLI 本地回调方案** | 本机 Login Helper | 本机工具缓存，CLI 调用时取得 token | **不经过** |
+| **Temporal UI 登录** | UI Server | 当前实现通过浏览器 Cookie 等管理登录状态 | 经过 |
+| CLI 借用 UI 登录回调 | 需要专门实现安全交接 | 取决于自定义方案 | 非现成通用能力 |
+
+**“浏览器参与登录”不意味着“必须经过 Temporal UI”。** 浏览器只是打开 Okta 登录页面；已经存在的 Okta SSO 会话可能让用户免输密码，但 UI 和 CLI 仍各自获取 token。
+
+### 你们需要配置的关键点
+
+| 位置 | 要配置什么 |
+|---|---|
+| Okta | 单独的 Native Application，例如 `TemporalLocalCLI`；启用 Authorization Code + PKCE |
+| CLI 回调 | 注册本地回调，例如 `http://127.0.0.1:指定端口/callback`；必须满足 Okta 的 redirect URI 匹配规则，不能随意替换 UI callback |
+| ID Token claims | 配置 `groups` 或 `permissions` |
+| Frontend ClaimMapper | 信任正确 issuer / JWKS；明确允许 CLI 的 `client_id` 作为 ID Token audience |
+| 权限 | 复用 UI 的 group 映射，或者读取 token 中的 Temporal `permissions` |
+| 本地工具 | 完成登录、ID Token 验证、缓存、续期和 CLI 注入 |
+
+**如果用 ID Token，就需要由 Login Helper 明确管理 ID Token 的更新。** 当前 CLI 的 OAuth 自动刷新路径使用的是 **Access Token**，不能直接拿来当作 ID Token 刷新方案。
+
+最终发送请求可使用官方支持的 metadata 参数：
+
+```bash
+temporal workflow list \
+  --address temporal.example.com:7233 \
+  --namespace orders-prod \
+  --tls \
+  --grpc-meta "authorization=Bearer ${TEMPORAL_ID_TOKEN}"
+```
+
+`--grpc-meta` 是官方参数；上面的 `authorization=Bearer …` 是结合该参数格式与服务端 Bearer 要求得到的用法，**不是文档中原样提供的 Okta 登录示例**。服务端再执行 ClaimMapper → Authorizer。
+
+参考：
+
+- [Temporal CLI Global Flags](https://docs.temporal.io/cli/command-reference/env#global-flags)
+- [Self-hosted Temporal Security](https://docs.temporal.io/self-hosted-guide/security)
 
 
 
 
+## 问答
 
-
-
-
-
-ClaimMapper 把身份转成权限，参照什么转呢？
-
-
-
-
-
-
-
-
-
-
-
+### ClaimMapper 把身份转成权限，参照什么转呢？
 
 
 参照你们预先配置的“授权规则”转换。ClaimMapper 不会从身份本身推断出权限。
@@ -108,30 +196,7 @@ Authorizer	API 所需角色，判断“当前操作能不能执行”
 另外，内置 JWT ClaimMapper 是另一种方式：它直接读取 token 中已经包含的 permissions，例如 orders-prod:read。你们如果只在 token 中放 Okta groups，就需要自定义 ClaimMapper，完成 group → namespace 权限 的查询与转换。
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-那对于工作负载,SPIFFE ID 怎么变换成role?
-
-
-
-
-
-
-
-
-
-
-
+### 那对于工作负载,SPIFFE ID 怎么变换成role?
 
 
 通过预先维护的 SPIFFE ID → namespace → role 授权规则，由自定义 ClaimMapper 查询并转换。SPIFFE ID 本身不包含 Temporal role。
@@ -166,31 +231,7 @@ Claims{
 不建议仅凭 ID 名称含有 worker 就自动赋予 worker 权限，应明确配置完整身份与权限的映射。
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-ClaimMapper代码能区分请求来自于workload还是user么？
-
-
-
-
-
-
-
-
-
-
-
-
+### ClaimMapper代码能区分请求来自于workload还是user么？
 
 可以，但需要你们在自定义 ClaimMapper 中定义区分规则；Temporal 不会自动替你判断是人还是程序。
 
