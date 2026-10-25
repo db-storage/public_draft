@@ -230,6 +230,7 @@ temporal workflow list \
 
 论坛和 Issue 提供的是具体使用证据，不能把旧版参数、个别部署经验直接当成当前版本的通用配置。
 
+
 ### 前面检查过的源码
 
 以下链接固定到当时检查的提交，不代表所有已发布版本均具有相同行为。
@@ -256,6 +257,35 @@ temporal workflow list \
 4. **验证运维场景**：Token 过期刷新、退出、移除应用访问权、变更组成员、密钥轮换，以及 UI/CLI 权限是否一致。
 
 这样可以先确认 Temporal 认证授权确实满足要求，再选择最适合员工使用的登录方式，避免先投入某个登录工具后才发现权限模型不匹配。
+
+### 没有浏览器的场景
+```mermaid
+sequenceDiagram
+    actor User
+    participant Helper as Login Helper on Remote Host
+    participant Browser as Browser on User Device
+    participant Okta
+    participant FE as Temporal Frontend
+
+    User->>Helper: 1. Start login
+    Helper->>Okta: 2. POST /device/authorize with client_id and scopes
+    Okta-->>Helper: 3. Return device_code, user_code, verification_uri and interval
+    Helper-->>User: 4. Display verification URL and user_code
+    User->>Browser: 5. Open URL and enter user_code
+    Browser->>Okta: 6. Complete login, MFA and device authorization
+    Okta->>Okta: 7. Check app access and approve authorization
+
+    loop Poll at the required interval until approved or expired
+        Helper->>Okta: 8. POST /token with client_id, device_code and device grant_type
+        Okta-->>Helper: 9. Return authorization_pending or tokens
+    end
+
+    Helper->>Helper: 10. Store tokens and supply Access Token to Temporal CLI
+    Note over Helper,FE: The following request is sent by Temporal CLI on the remote host
+    Helper->>FE: 11. Call API with Bearer token and target Namespace
+    FE->>FE: 12. Validate JWT, map claims and check permissions
+    FE-->>Helper: 13. Return result
+```
 
 # CLI 登陆和鉴权流程 （这个更早，不一定都对）
 **对于你们的 self-hosted + Okta，浏览器登录可以实现，但需要配套登录工具。采用 CLI 本地回调的方案时，token 由本机登录工具获取、保存，再交给 Temporal CLI；UI Server 不参与。**
