@@ -55,7 +55,7 @@ Authorizer 判断请求	请求读取 orders-prod → 允许；请求启动 Workf
 
 
 
-## CLI 登陆新
+# CLI 登陆新
 目标是让员工通过 Okta 确认身份，再用 CLI 按权限访问自部署 Temporal。建议优先评估“浏览器登录获取 Access Token”，同时保留 mTLS 路线；不要把方案绑定在 `temporal cloud login` 上。
 
 ## 1. 需要解决的问题
@@ -96,28 +96,28 @@ A、B 是 Okta 官方支持的 OAuth 流程，但不意味着 Temporal CLI 原�
 
 ```mermaid
 sequenceDiagram
-    participant CLI as Temporal CLI
-    participant Helper as Login Helper
-    participant Browser as Web Browser
-    participant Okta
-    participant FE as Temporal Frontend
+    participant C as Temporal CLI
+    participant H as Login Helper
+    participant B as Web Browser
+    participant O as Okta
+    participant F as Temporal Frontend
 
-    Helper->>Helper: 1. Generate verifier, challenge and state
-    Helper->>Helper: 2. Start local callback listener
-    Helper->>Browser: 3. Open Okta authorization URL
-    Browser->>Okta: 4. Send client_id, redirect_uri, scopes, state and challenge
-    Okta->>Okta: 5. Authenticate user, apply MFA and check app access
-    Okta-->>Browser: 6. Redirect to local callback with code and state
-    Browser->>Helper: 7. Deliver code and state
-    Helper->>Helper: 8. Validate state
-    Helper->>Okta: 9. Exchange code with client_id, redirect_uri and verifier
-    Okta-->>Helper: 10. Return Access Token and optional Refresh Token
-    Helper->>Helper: 11. Store credentials securely
-    Helper->>CLI: 12. Supply Access Token
-    CLI->>FE: 13. Call API with Bearer token and target Namespace
-    FE->>FE: 14. Validate JWT and map identity or groups to roles
-    FE->>FE: 15. Authorize API operation in target Namespace
-    FE-->>CLI: 16. Return result or permission error
+    H->>H: 1. Generate PKCE and state
+    H->>H: 2. Start local callback
+    H->>B: 3. Open authorization URL
+    B->>O: 4. Send client_id, redirect_uri, scopes, state, challenge
+    O->>O: 5. Authenticate user and check app access
+    O-->>B: 6. Redirect with code and state
+    B->>H: 7. Deliver code and state
+    H->>H: 8. Validate state
+    H->>O: 9. Exchange code with client_id, redirect_uri, verifier
+    O-->>H: 10. Return tokens
+    H->>H: 11. Store tokens
+    H->>C: 12. Supply Access Token
+    C->>F: 13. Call API with Bearer token and Namespace
+    F->>F: 14. Validate JWT and map claims
+    F->>F: 15. Check API and Namespace permissions
+    F-->>C: 16. Return result
 ```
 
 图中省略了部分协议参数：
@@ -257,7 +257,7 @@ temporal workflow list \
 
 这样可以先确认 Temporal 认证授权确实满足要求，再选择最适合员工使用的登录方式，避免先投入某个登录工具后才发现权限模型不匹配。
 
-## CLI 登陆和鉴权流程
+# CLI 登陆和鉴权流程 （这个更早，不一定都对）
 **对于你们的 self-hosted + Okta，浏览器登录可以实现，但需要配套登录工具。采用 CLI 本地回调的方案时，token 由本机登录工具获取、保存，再交给 Temporal CLI；UI Server 不参与。**
 
 我读取了当前 CLI、UI Server 的源码及文档，有一个重要补充：**CLI 已有 OAuth Access Token 的读取、刷新逻辑，但不能据此认为它自带通用的 Okta 浏览器登录能力，更不能认为它会自动管理 ID Token。**
