@@ -55,7 +55,207 @@ Authorizer 判断请求	请求读取 orders-prod → 允许；请求启动 Workf
 
 
 
+## CLI 登陆新
+目标是让员工通过 Okta 确认身份，再用 CLI 按权限访问自部署 Temporal。建议优先评估“浏览器登录获取 Access Token”，同时保留 mTLS 路线；不要把方案绑定在 `temporal cloud login` 上。
 
+## 1. 需要解决的问题
+
+| 问题 | 负责方 | 要完成什么 |
+|---|---|---|
+| 登录：用户是谁？ | Okta + 登录工具 | SSO / MFA、应用访问检查、签发凭据 |
+| 认证：凭据是否可信？ | Temporal Frontend | 验证 JWT，或验证 mTLS 客户端证书 |
+| 授权：允许做什么？ | ClaimMapper + Authorizer | 将身份映射为 Namespace 角色，并检查具体 API 操作 |
+
+Okta 的“允许访问应用”不等于 Temporal 的“允许操作某个 Namespace”。
+
+## 2. 候选方案比较
+
+浏览器登录流程可以由独立辅助工具、企业已有工具或 CLI 扩展实现，Temporal CLI 负责执行业务命令。
+
+| 方案 | 用户体验与适用场景 | 优点 | 成本与限制 |
+|---|---|---|---|
+| A. Authorization Code + PKCE | 本机 CLI 打开浏览器，登录后回到本机 callback | 适合开发者电脑；复用 Okta SSO/MFA；无需在 CLI 保存客户端密钥 | 需要登录工具；注册本地 callback；管理 Token 缓存和刷新 |
+| B. Device Authorization | CLI 显示网址和验证码，用户在浏览器完成登录，CLI 轮询取得 Token | 适合 SSH、跳板机、无浏览器终端；不需要本地 callback | Okta 应用和策略须启用该授权类型；需要工具实现轮询 |
+| C. mTLS 客户端证书 | 先取得个人证书，CLI 携带证书连接 | Temporal 明确支持；已有企业证书体系时容易融入 | 需要签发、轮换及撤销机制；服务端按证书身份映射权限 |
+| D. 复用 Cloud CLI 登录实现 | 使用 OAuth profile，借用 `temporal cloud login` | 可能减少开发量，已有 PKCE、Token 保存和刷新代码 | 尚未完成真实 Okta 联调；不是明确记录的 self-hosted Okta 产品能力 |
+| E. 手工取得 JWT，再传给 CLI | 手动获取 Token 后执行命令 | 适合快速验证 Frontend 认证授权 | 操作繁琐，Token 到期需处理，不适合作为长期员工入口 |
+
+A、B 是 Okta 官方支持的 OAuth 流程，但不意味着 Temporal CLI 原生提供了对应的 Okta 登录入口。D 是 A 的一种实现候选，不是另一种认证协议。
+
+参考：
+- [Okta：Authorization Code + PKCE](https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/)
+- [Okta：Device Authorization](https://developer.okta.com/docs/guides/device-authorization-grant/main/)
+
+建议：先评估 A；若经常在 SSH/跳板机使用，则重点评估 B；公司已有成熟个人证书签发体系时，再将 C 放到同等优先级。
+
+## 3. 推荐的 JWT 登录与授权流程
+
+下面是 PKCE 方案设计图，不代表原生 Temporal CLI 已经完整支持该集成。
+
+`Login Helper` 表示需要选型或实现的登录工具，也可以最终集成为 CLI 扩展。
+
+```mermaid
+sequenceDiagram
+    participant CLI as Temporal CLI
+    participant Helper as Login Helper
+    participant Browser as Web Browser
+    participant Okta
+    participant FE as Temporal Frontend
+
+    Helper->>Helper: 1. Generate verifier, challenge and state
+    Helper->>Helper: 2. Start local callback listener
+    Helper->>Browser: 3. Open Okta authorization URL
+    Browser->>Okta: 4. Send client_id, redirect_uri, scopes, state and challenge
+    Okta->>Okta: 5. Authenticate user, apply MFA and check app access
+    Okta-->>Browser: 6. Redirect to local callback with code and state
+    Browser->>Helper: 7. Deliver code and state
+    Helper->>Helper: 8. Validate state
+    Helper->>Okta: 9. Exchange code with client_id, redirect_uri and verifier
+    Okta-->>Helper: 10. Return Access Token and optional Refresh Token
+    Helper->>Helper: 11. Store credentials securely
+    Helper->>CLI: 12. Supply Access Token
+    CLI->>FE: 13. Call API with Bearer token and target Namespace
+    FE->>FE: 14. Validate JWT and map identity or groups to roles
+    FE->>FE: 15. Authorize API operation in target Namespace
+    FE-->>CLI: 16. Return result or permission error
+```
+
+图中省略了部分协议参数：
+- 授权请求还包含 `response_type=code`、`code_challenge_method=S256`。
+- Token 兑换请求包含 `grant_type=authorization_code`。
+- 请求 `openid` 时，成功响应还包含 ID Token；本方案使用 Access Token 访问 Temporal API。
+
+Token 由本机登录工具/CLI 持有，这条路径不经过 Temporal UI Server。浏览器主要负责交互登录和传递授权码，Token 由登录工具直接向 Okta 兑换。
+
+本地 callback，例如 `http://127.0.0.1:56628/callback`，需要在对应 Okta 应用中注册。浏览器和监听 callback 的登录工具应位于能够正确访问该 loopback 地址的同一台机器；远程终端场景可考虑 Device Authorization。
+
+如果选 Device Authorization，主要替换图中 1–10 步：工具向 Okta 申请设备码，用户在浏览器确认，工具轮询 Token Endpoint；后续 Temporal 请求与授权过程相同。
+
+参考：
+- [Okta：PKCE 流程](https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/)
+- [Okta：Device Authorization 流程](https://developer.okta.com/docs/guides/device-authorization-grant/main/)
+
+## 4. 权限怎么设计
+
+可以让 UI 和 CLI 使用独立的 Okta 应用，但共用面向 Temporal API 的 Token 签发策略和权限映射。
+
+| 层次 | 建议配置 |
+|---|---|
+| Okta 应用 | CLI 使用 Native Application；分配允许使用的用户/组；配置 MFA、授权类型、callback |
+| Token 签发 | 优先使用 Access Token；明确 Temporal API 的 audience；包含稳定用户标识及所需 groups / permissions |
+| Frontend 认证 | 配置信任的签名密钥，并确保校验签名、有效期、issuer、audience；核对所选 ClaimMapper 的实际能力 |
+| ClaimMapper | 若 Token 已符合默认 `permissions` 格式，可用默认实现；若传的是企业 groups，则实现 groups → Namespace 角色映射 |
+| Authorizer | 优先复用内置角色授权器；特殊业务规则再考虑自定义 |
+| 生命周期 | 登录工具处理缓存、刷新、重新登录；明确权限变更在 Token 有效期和权限缓存中的生效时间 |
+
+一种适合企业维护的划分是：
+
+- Okta 管理 `user → group`。
+- Git / 权限服务管理 `group → Namespace role`。
+
+这是方案建议，不是 Temporal 强制要求。
+
+使用 Okta Access Token 保护自己的 Temporal API，需要使用适合自有 API 的 Custom Authorization Server；Org Authorization Server 的 Access Token 面向 Okta API。生产环境还应确认公司是否已有 API Access Management 授权。
+
+参考：[Okta：Authorization Servers](https://developer.okta.com/docs/concepts/auth-servers/)
+
+### Access Token 与 ID Token 的选择
+
+- Access Token 面向 API，是本方案的优先选择。
+- ID Token 面向 OIDC 客户端，用于证明登录身份；其 `aud` 通常是客户端的 `client_id`。
+- Temporal UI 默认向 Frontend 转发 Access Token，可以通过 `TEMPORAL_AUTH_USE_ID_TOKEN_AS_BEARER=true` 改为 ID Token。
+- 前面检查的 CLI OAuth 保存、刷新和请求路径使用 Access Token；如果选择 ID Token，需要额外适配。
+- 无论选择哪种 Token，都要明确 audience、可信 issuer 和权限声明，不能通过关闭校验来解决配置不匹配。
+
+参考：
+- [Temporal UI 配置](https://docs.temporal.io/references/web-ui-configuration#providers)
+- [Okta：Validate Access Tokens](https://developer.okta.com/docs/guides/validate-access-tokens/main/)
+- [Okta：Validate ID Tokens](https://developer.okta.com/docs/guides/validate-id-tokens/main/)
+
+## 5. 已确认的能力与尚未验证的部分
+
+| 问题 | 结论 |
+|---|---|
+| 自部署 CLI 能否认证、授权？ | 能，有官方机制、示例和实际案例 |
+| CLI 能否携带 JWT？ | 能，通过 `authorization` gRPC metadata 等方式 |
+| CLI 能否使用 mTLS？ | 能，通过客户端证书与私钥连接 |
+| JWT 是否必须配合 mTLS？ | 不必须；服务端可以接受 JWT + TLS，不要求客户端证书 |
+| 是否必须先执行某个 `login` 命令？ | 不必须；已有有效 Token 或证书即可发请求 |
+| 官方是否有明确的 self-hosted Okta 一键浏览器登录教程？ | 当前检索尚未找到，不能据此断言绝对不存在 |
+| 能否复用 Cloud CLI 浏览器登录代码？ | 源码上有可复用路径，但未完成真实 Okta 联调 |
+| 是否必须使用 Temporal UI Server 帮 CLI 登录？ | 不必须；PKCE / Device Authorization 可以由登录工具直接与 Okta 交互 |
+
+### CLI 携带已有 JWT 的示例
+
+下面命令假设已通过登录工具获得 `JWT_TOKEN`：
+
+```bash
+temporal workflow list \
+  --address temporal.internal.example:7233 \
+  --namespace orders-prod \
+  --tls \
+  --grpc-meta "authorization=Bearer ${JWT_TOKEN}"
+```
+
+该命令负责携带 Token，不负责登录 Okta 或获取 Token。
+
+### CLI 使用 mTLS 的示例
+
+```bash
+temporal workflow list \
+  --address temporal.internal.example:7233 \
+  --namespace orders-prod \
+  --tls-cert-path ./user.crt \
+  --tls-key-path ./user.key \
+  --tls-ca-path ./server-ca.crt
+```
+
+证书签发由企业证书系统负责；证书身份对应的 Namespace 权限由服务端映射。mTLS 连接成功本身不等于完成 Namespace 授权。
+
+## 6. 需要保留的文档与实际案例
+
+| 来源 | 链接 | 能证明什么 |
+|---|---|---|
+| 官方文档 | [Self-hosted Security](https://docs.temporal.io/self-hosted-guide/security) | mTLS、JWT、ClaimMapper、Authorizer 的整体机制 |
+| 官方参数 | [CLI Global Flags](https://docs.temporal.io/cli/command-reference/workflow#global-flags) | CLI 的 TLS 证书、私钥、CA、gRPC metadata 参数 |
+| 官方示例 | [samples-server：TLS 完整示例](https://github.com/temporalio/samples-server/tree/main/tls/tls-full) | 自部署证书链及 CLI 访问示例，部分使用旧 `tctl` |
+| 官方示例 | [samples-server：Authorizer](https://github.com/temporalio/samples-server/tree/main/extensibility/authorizer) | 现代 CLI 操作 Namespace，被授权器允许或拒绝 |
+| 论坛讨论 | [How use authorization mechanism in worker](https://community.temporal.io/t/how-use-authorization-mechanism-in-worker/3613) | 用户成功通过 `tctl` 传递 JWT；维护者解释 Bearer Token 路径 |
+| 论坛讨论 | [JWT token and mTLS switching](https://community.temporal.io/t/jwt-token-and-mtls-switching/3652) | CLI 使用 JWT、Worker 使用 mTLS 的配置讨论与成功反馈 |
+| 实际案例 | [Temporal Issue #6664](https://github.com/temporalio/temporal/issues/6664) | 现代 CLI 使用 `--grpc-meta` 携带 JWT，成功创建 Namespace；其他操作遇到权限问题 |
+| 官方 Cloud 文档 | [cloud login](https://docs.temporal.io/cli/command-reference/cloud/login) | Cloud 浏览器登录能力，不能直接当作 self-hosted Okta 支持承诺 |
+| Okta 官方 | [Authorization Code + PKCE](https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/) | 本机浏览器登录获取 Token |
+| Okta 官方 | [Device Authorization](https://developer.okta.com/docs/guides/device-authorization-grant/main/) | 无本地 callback 的交互登录 |
+| Okta 官方 | [Authorization Servers](https://developer.okta.com/docs/concepts/auth-servers/) | Org 与 Custom Authorization Server 的用途边界 |
+
+论坛和 Issue 提供的是具体使用证据，不能把旧版参数、个别部署经验直接当成当前版本的通用配置。
+
+### 前面检查过的源码
+
+以下链接固定到当时检查的提交，不代表所有已发布版本均具有相同行为。
+
+| 源码 | 作用 |
+|---|---|
+| [cloud-cli：oauth.go](https://github.com/temporalio/cloud-cli/blob/91470346497871905eab8801f921da6a4289d173/temporalcloudcli/oauth.go) | 浏览器打开、PKCE、本地 callback、授权码兑换 |
+| [cloud-cli：commands.login.go](https://github.com/temporalio/cloud-cli/blob/91470346497871905eab8801f921da6a4289d173/temporalcloudcli/commands.login.go) | 登录命令、默认 OAuth 地址生成、已有 profile 复用 |
+| [cli：config.oauth.go](https://github.com/temporalio/cli/blob/5730c955d608c88bdc79de7910fe05a826cea314/cliext/config.oauth.go) | OAuth profile 的加载、保存及 Token 配置 |
+| [cli：client.go](https://github.com/temporalio/cli/blob/5730c955d608c88bdc79de7910fe05a826cea314/cliext/client.go) | 普通 CLI 请求使用 Access Token，刷新后保存 |
+
+复用这条实现时需要特别确认：
+- 实际安装的 CLI 和 Cloud 扩展版本是否包含相应代码。
+- Okta 的授权和 Token Endpoint 是否通过 profile 正确配置。
+- scopes、audience、callback 是否与 Okta 应用和策略匹配。
+- Token 保存和刷新是否符合企业要求。
+- 不要将源码可复用等同于官方承诺的 self-hosted Okta 支持。
+
+## 7. 建议的验证顺序
+
+1. **先打通授权闭环**：获取一个测试用户 Token，让 CLI 携带它访问 Frontend，验证“允许读、拒绝写、拒绝访问其他 Namespace”。
+2. **再验证登录体验**：本机测试 PKCE；远程终端测试 Device Authorization，比较公司 Okta 策略的兼容性。
+3. **最后选择工具**：优先企业已有登录工具，其次评估现成 OAuth 工具或 Cloud CLI 代码复用，确有缺口再开发小型辅助工具。
+4. **验证运维场景**：Token 过期刷新、退出、移除应用访问权、变更组成员、密钥轮换，以及 UI/CLI 权限是否一致。
+
+这样可以先确认 Temporal 认证授权确实满足要求，再选择最适合员工使用的登录方式，避免先投入某个登录工具后才发现权限模型不匹配。
 
 ## CLI 登陆和鉴权流程
 **对于你们的 self-hosted + Okta，浏览器登录可以实现，但需要配套登录工具。采用 CLI 本地回调的方案时，token 由本机登录工具获取、保存，再交给 Temporal CLI；UI Server 不参与。**
