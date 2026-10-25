@@ -87,6 +87,7 @@ ClaimMapper 把身份转成权限，参照什么转呢？
 Okta group	orders-developers	orders-dev	read, write
 Okta group	orders-oncall	orders-prod	read
 SPIFFE ID	spiffe://corp/orders-worker	orders-prod	worker
+- 但是实际上考虑当前有多个domain，都允许它访问。那么可能就不好映射了。之前没有约定一定如何。
 
 
 ClaimMapper 处理两类请求时：
