@@ -1,5 +1,26 @@
 ## 带 JWT的authorize 
 
+
+```mermaid
+sequenceDiagram
+    participant Client as UI Server / Temporal CLI
+    participant FE as Temporal Frontend
+    participant CM as ClaimMapper
+    participant AZ as Authorizer
+
+    Note over FE,AZ: ClaimMapper and Authorizer run inside Frontend
+
+    Client->>FE: 1. gRPC metadata includes authorization = Bearer JWT
+    FE->>CM: 2. Pass authentication information
+    CM->>CM: 3. Validate JWT and map claims
+    CM-->>FE: 4. Return Temporal Claims
+    FE->>AZ: 5. Check roles for target API and Namespace
+    AZ-->>FE: 6. Return allow or deny
+    FE->>FE: 7. Execute or reject request
+    FE-->>Client: 8. Return result or error
+```
+
+
 ```mermaid
 sequenceDiagram
     participant UI as UI Server
