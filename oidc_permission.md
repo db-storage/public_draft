@@ -1,3 +1,29 @@
+## 带 JWT的authorize 
+
+```mermaid
+sequenceDiagram
+    participant UI as UI Server
+    participant CLI as Temporal CLI
+    participant FE as Temporal Frontend
+    participant CM as ClaimMapper
+    participant AZ as Authorizer
+
+    Note over FE,AZ: ClaimMapper and Authorizer run inside Frontend
+
+    alt UI request
+        UI->>FE: 1. gRPC metadata includes authorization = Bearer JWT
+    else CLI request
+        CLI->>FE: 1. gRPC metadata includes authorization = Bearer JWT
+    end
+
+    FE->>CM: 2. Pass authentication information
+    CM->>CM: 3. Validate JWT and map claims
+    CM-->>FE: 4. Return Temporal Claims
+    FE->>AZ: 5. Check roles for target API and Namespace
+    AZ-->>FE: 6. Return allow or deny
+    FE->>FE: 7. Execute or reject request
+```
+
 ## Terraform 流程
 [temporalio/terraform-provider-temporalcloud](https://github.com/temporalio/terraform-provider-temporalcloud?utm_source=chatgpt.com)
 MPL-2.0
