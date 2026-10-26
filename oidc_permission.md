@@ -372,6 +372,30 @@ temporal workflow list \
 这样可以先确认 Temporal 认证授权确实满足要求，再选择最适合员工使用的登录方式，避免先投入某个登录工具后才发现权限模型不匹配。
 
 ### 没有浏览器的场景
+- 不带frontend的
+```mermaid
+sequenceDiagram
+    actor User
+    participant Helper as Login Helper on Remote Host
+    participant Browser as Browser on User Device
+    participant Okta
+
+    User->>Helper: 1. Start login
+    Helper->>Okta: 2. POST /device/authorize with client_id and scopes
+    Okta-->>Helper: 3. Return device_code, user_code, verification_uri and interval
+    Helper-->>User: 4. Display verification URL and user_code
+    User->>Browser: 5. Open URL and enter user_code
+    Browser->>Okta: 6. Complete login, MFA and device authorization
+    Okta->>Okta: 7. Check app access and approve authorization
+
+    loop Poll at the required interval until approved or expired
+        Helper->>Okta: 8. POST /token with client_id, device_code and device grant_type
+        Okta-->>Helper: 9. Return authorization_pending or tokens
+    end
+
+    Helper->>Helper: 10. Store tokens and supply Access Token to Temporal CLI
+```
+
 ```mermaid
 sequenceDiagram
     actor User
