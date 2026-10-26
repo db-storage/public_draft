@@ -2,6 +2,24 @@
 [temporalio/terraform-provider-temporalcloud](https://github.com/temporalio/terraform-provider-temporalcloud?utm_source=chatgpt.com)
 MPL-2.0
 
+```mermaid
+flowchart TD
+    User["Team Member"]
+    PR["Git Pull Request"]
+    Git["Git Repository"]
+    Plan["Terraform Plan"]
+    Apply["Terraform Apply"]
+    Provider["Temporal Cloud Terraform Provider (Open Source)"]
+    Cloud["Temporal Cloud: Account Roles and Namespace Permissions"]
+
+    User -->|"1. Submit permission changes"| PR
+    PR -->|"2. Review and merge"| Git
+    Git -->|"3. Trigger CI pipeline"| Plan
+    Plan -->|"4. Approve and apply"| Apply
+    Apply -->|"5. Invoke provider"| Provider
+    Provider -->|"6. Call Temporal Cloud API"| Cloud
+```
+
 
 ```mermaid
 flowchart TD
