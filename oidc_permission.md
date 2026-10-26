@@ -296,6 +296,9 @@ Token 由本机登录工具/CLI 持有，这条路径不经过 Temporal UI Serve
 | 是否必须使用 Temporal UI Server 帮 CLI 登录？ | 不必须；PKCE / Device Authorization 可以由登录工具直接与 Okta 交互 |
 
 ### CLI 携带已有 JWT 的示例
+[example](https://github.com/temporalio/temporal/issues/6664?utm_source=chatgpt.com)
+[discussion](https://community.temporal.io/t/custom-headers-provider-for-temporal-cli/9362/2)
+
 
 下面命令假设已通过登录工具获得 `JWT_TOKEN`：
 
