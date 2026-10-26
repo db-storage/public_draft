@@ -1,3 +1,20 @@
+## Terraform 流程
+[temporalio/terraform-provider-temporalcloud](https://github.com/temporalio/terraform-provider-temporalcloud?utm_source=chatgpt.com)
+MPL-2.0
+
+
+```mermaid
+flowchart TD
+    User["Team Member"] -->|"1. Submit permission changes"| PR["Git Pull Request"]
+    PR -->|"2. Review and merge"| Git["Git Repository"]
+    Git -->|"3. Trigger CI pipeline"| Plan["Terraform Plan"]
+    Plan -->|"4. Approve and apply"| Apply["Terraform Apply"]
+    Apply --> Provider["Temporal Cloud Terraform Provider (Open Source)"]
+    Provider -->|"5. Call Temporal Cloud API"| Cloud["Temporal Cloud"]
+    Cloud --> Account["Account Roles"]
+    Cloud --> Namespace["Namespace Permissions"]
+```
+
 ## token 背景知识
 - tokens returned from okta
 ```jsonc
