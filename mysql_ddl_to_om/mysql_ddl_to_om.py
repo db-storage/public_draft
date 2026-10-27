@@ -22,7 +22,7 @@ class ConversionError(ValueError):
     pass
 
 
-# OM 1.12 table.json enum. Unsigned is retained in dataTypeDisplay.
+# OM 1.13.3 table.json enum. Unsigned is retained in dataTypeDisplay.
 TYPE_MAP = {
     'TINYINT': 'TINYINT', 'SMALLINT': 'SMALLINT', 'MEDIUMINT': 'INT',
     'INT': 'INT', 'BIGINT': 'BIGINT', 'UTINYINT': 'TINYINT',

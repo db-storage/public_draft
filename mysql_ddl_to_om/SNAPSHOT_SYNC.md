@@ -50,7 +50,7 @@ python snapshot_sync.py apply plan.json --journal apply-journal.json
 
 ### Important: rename semantic boundary
 
-Review of OM 1.12.0-release shows that `TableRepository` does not enable `EntityRepository.renameAllowed`, so PATCHing `name` is reverted. This tool cannot claim to rename the original table entity through PATCH. It explicitly uses a **replacement rename**, which requires `--acknowledge-rename-replacement`.
+Review of OM 1.13.3-release shows that `TableRepository` does not enable `EntityRepository.renameAllowed`, so PATCHing `name` is reverted. This tool cannot claim to rename the original table entity through PATCH. It explicitly uses a **replacement rename**, which requires `--acknowledge-rename-replacement`.
 
 A table rename migrates table `description`, `displayName`, `tags`, `owners`, `domains`, and `extension`, plus column `description`, `displayName`, and `tags`. A comment in the DDL overrides a migrated comment.
 
@@ -118,6 +118,6 @@ Parent lookup, list pagination (`include=all`), cross-scope checks, and duplicat
 
 ## Validation status and limits
 
-Tests cover the real converter, a stateful OM test double, and mocked HTTP parameters; no real OM service runs. The deployment version was not provided, so design is based on OM 1.12 request models and server source. Before deployment, validate JSON Patch tests, full-column deletion behavior, restore, bot permissions, entity soft deletion, and annotation preservation on a test OM. If the server ignores a write, read-back validation prevents subsequent old-table deletion. Comparison accounts for server lowercasing `dataTypeDisplay`; original enum casing remains in `schemaDefinition`. Primary keys are represented only in `tableConstraints`, not duplicated as column PRIMARY_KEY.
+Tests cover the real converter, a stateful OM test double, and mocked HTTP parameters; no real OM service runs. The deployment version was not provided, so design is based on OM 1.13.3 request models and server source. Before deployment, validate JSON Patch tests, full-column deletion behavior, restore, bot permissions, entity soft deletion, and annotation preservation on a test OM. If the server ignores a write, read-back validation prevents subsequent old-table deletion. Comparison accounts for server lowercasing `dataTypeDisplay`; original enum casing remains in `schemaDefinition`. Primary keys are represented only in `tableConstraints`, not duplicated as column PRIMARY_KEY.
 
 MySQL parsing capabilities follow the scope in README.md. Not all MySQL syntax is supported, and no MySQL-server semantic validation is performed. Lifecycle features do not remove those parsing boundaries.

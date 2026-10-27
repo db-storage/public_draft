@@ -1,4 +1,5 @@
 import json
+from importlib.metadata import version
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -167,8 +168,9 @@ def test_http_requires_opt_in():
         submit_tables(bundle(), 'http://localhost:8585', 'test-token')
 
 
-def test_actual_sdk_models():
+def test_om_1_13_3_sdk_models():
     pytest.importorskip('metadata.generated.schema.api.data.createTable')
+    assert version('openmetadata-ingestion') == '1.13.3.0'
     tables = convert((Path(__file__).parents[1]/'examples/orders.sql').read_text())[0]
     tables += convert("CREATE TABLE parent(id INT PRIMARY KEY); CREATE TABLE child(id INT, FOREIGN KEY(id) REFERENCES parent(id))")[0]
     validate_sdk(tables)

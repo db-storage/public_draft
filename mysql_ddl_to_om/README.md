@@ -77,11 +77,13 @@ Unsupported types, expression/prefix unique indexes, and unknown constraints/tab
 
 ## 4. Optional deployed-SDK validation
 
-JSON output follows the OM 1.12 official table model. Because the deployed OM version is unknown, validate against your deployed version. `--validate-sdk` validates every request with the installed SDK's `CreateTableRequest` before conversion or submission.
+JSON output follows the OM 1.13.3 official table model. `--validate-sdk` validates every request with the installed SDK's `CreateTableRequest` before conversion or submission. Install the matching 1.13.3 SDK for the project's compatibility check; use your deployed version for an additional deployment-specific validation.
 
-Install a server-compatible full `openmetadata-ingestion` environment separately, then run:
+Install the full 1.13.3 SDK environment separately, then run:
 
 ```bash
+pip install 'openmetadata-ingestion==1.13.3.0'
+
 python mysql_ddl_to_om.py convert examples/orders.sql \
   --service mysql_prod --database default --schema shop \
   --output models.json --validate-sdk
@@ -129,6 +131,6 @@ Disabling third-party pytest auto-loading prevents plugins bundled with ingestio
 ## References
 
 - SQLGlot: https://github.com/tobymao/sqlglot
-- OM table model: https://github.com/open-metadata/OpenMetadata/blob/1.12.0-release/openmetadata-spec/src/main/resources/json/schema/entity/data/table.json
-- OM CreateTableRequest: https://github.com/open-metadata/OpenMetadata/blob/1.12.0-release/openmetadata-spec/src/main/resources/json/schema/api/data/createTable.json
+- OM 1.13.3 table model: https://github.com/open-metadata/OpenMetadata/blob/1.13.3-release/openmetadata-spec/src/main/resources/json/schema/entity/data/table.json
+- OM 1.13.3 CreateTableRequest: https://github.com/open-metadata/OpenMetadata/blob/1.13.3-release/openmetadata-spec/src/main/resources/json/schema/api/data/createTable.json
 - OM custom connectors: https://docs.open-metadata.org/latest/connectors/custom-connectors
