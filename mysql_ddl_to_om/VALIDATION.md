@@ -1,11 +1,13 @@
 # Current validation: Git PR diff / full / security tags
 
-Latest run on 2026-10-27: **116 passed, 1 skipped**, with 117 tests collected.
+Latest run on 2026-10-27: **119 passed, 1 skipped**, with 120 tests collected.
 
 - Git mode uses real commits in temporary local Git repositories. Coverage includes PR merge-base comparison, direct base/head comparison, forced full generation, multiple databases, file additions/deletions/moves, table and column changes, rename manifests, formatting-only changes, identifiers containing dots/spaces/non-ASCII characters, cyclic foreign keys, COMMENT classifications/tags, and the CI shell entry point.
 - The generator performs no OM GET or writes and connects to neither MySQL nor OM. The full SDK is not installed in the current environment, so official generated-model validation is skipped. Earlier model-validation records below are preserved and are not an end-to-end validation of the new service workflow.
 - The diff/full CLI shares Git-snapshot reads, the original DDL converter, and `comment_annotations`. Output contains standard API bodies and an ordered CI request manifest; the manifest is not executed.
 - Tests for the older `snapshot_sync` mode are also retained and pass. The recommended workflow is `pr_diff_to_om.py`; the older mode is not required.
+- Reverse-validation coverage renders OM request JSON to MySQL DDL, re-parses it with the forward converter, and compares core table fields. It covers primary/unique/foreign-key constraints and quoted identifiers.
+- Defaults, auto-increment, generated expressions, regular indexes, and table options remain outside that comparison because the forward conversion records them only as raw `schemaDefinition` text; they require warning review and, when relevant, MySQL-server validation.
 
 ---
 

@@ -5,7 +5,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from mysql_ddl_to_om import ConversionError, convert_sql, convert_files, main, submit_tables, validate_sdk
+from mysql_ddl_to_om import (
+    ConversionError, convert_sql, convert_files, main, reverse_om_tables,
+    submit_tables, validate_sdk,
+)
 
 
 def convert(sql):
@@ -174,6 +177,37 @@ def test_om_1_13_3_sdk_models():
     tables = convert((Path(__file__).parents[1]/'examples/orders.sql').read_text())[0]
     tables += convert("CREATE TABLE parent(id INT PRIMARY KEY); CREATE TABLE child(id INT, FOREIGN KEY(id) REFERENCES parent(id))")[0]
     validate_sdk(tables)
+
+
+def test_reverse_round_trip_preserves_core_table_fields():
+    tables = convert((Path(__file__).parents[1] / 'examples/orders.sql').read_text())[0]
+    ddl, warnings = reverse_om_tables(tables, verify=True)
+    assert warnings == []
+    assert 'CREATE TABLE `orders`' in ddl
+    assert 'BIGINT UNSIGNED' in ddl
+    assert 'PRIMARY KEY (`tenant_id`, `id`)' in ddl
+    assert "COMMENT 'Order status'" in ddl
+
+
+def test_reverse_round_trip_preserves_foreign_key_and_quoted_names():
+    tables = convert('''CREATE TABLE `order.detail` (
+        `id` BIGINT PRIMARY KEY,
+        `customer.id` BIGINT NOT NULL,
+        FOREIGN KEY (`customer.id`) REFERENCES shop.customers(id)
+    ) COMMENT 'Orders' ''')[0]
+    ddl, warnings = reverse_om_tables(tables, verify=True)
+    assert warnings == []
+    assert '`order.detail`' in ddl
+    assert 'REFERENCES `shop`.`customers` (`id`)' in ddl
+
+
+def test_reverse_cli_accepts_bundle_and_validates(tmp_path):
+    source, bundle_path, output = tmp_path/'a.sql', tmp_path/'models.json', tmp_path/'roundtrip.sql'
+    source.write_text('CREATE TABLE t(id INT PRIMARY KEY, name VARCHAR(8) COMMENT \'Name\')')
+    assert main(['convert', str(source), '--service', 's', '--database', 'default',
+                 '--schema', 'shop', '--output', str(bundle_path)]) == 0
+    assert main(['reverse', str(bundle_path), '--output', str(output), '--verify']) == 0
+    assert 'CREATE TABLE `t`' in output.read_text()
 
 
 def test_full_snapshot_add_remove_and_modify():

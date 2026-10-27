@@ -263,6 +263,178 @@ def validate_sdk(tables: list[dict]) -> None:
         CreateTableRequest(**table)
 
 
+def fqn_parts(value: str) -> list[str]:
+    """Split an OM FQN while retaining quoted segments as one part."""
+    if not isinstance(value, str) or not value:
+        raise ConversionError('Expected a non-empty OM FQN')
+    parts, current, quoted = [], [], False
+    for character in value:
+        if character == '"':
+            quoted = not quoted
+        elif character == '.' and not quoted:
+            if not current:
+                raise ConversionError(f'Invalid OM FQN: {value!r}')
+            parts.append(''.join(current))
+            current = []
+        else:
+            current.append(character)
+    if quoted or not current:
+        raise ConversionError(f'Invalid OM FQN: {value!r}')
+    parts.append(''.join(current))
+    return parts
+
+
+def mysql_identifier(value: str) -> str:
+    if not isinstance(value, str) or not value or any(ord(c) < 32 for c in value):
+        raise ConversionError(f'Invalid MySQL identifier: {value!r}')
+    return '`' + value.replace('`', '``') + '`'
+
+
+def mysql_string(value: str) -> str:
+    if not isinstance(value, str) or '\x00' in value:
+        raise ConversionError('MySQL COMMENT must be a string without NUL')
+    return "'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"
+
+
+def rendered_type(column: dict) -> str:
+    """Return a parser-validated MySQL type for a flat OM column."""
+    data_type = column.get('dataType')
+    display = column.get('dataTypeDisplay')
+    if not isinstance(data_type, str) or data_type not in set(TYPE_MAP.values()):
+        raise ConversionError(f'Unsupported OM column dataType: {data_type!r}')
+    if display is None:
+        display = data_type
+        if data_type in {'CHAR', 'VARCHAR', 'BINARY', 'VARBINARY'}:
+            length = column.get('dataLength')
+            if not isinstance(length, int) or length <= 0:
+                raise ConversionError(f'OM {data_type} column requires positive dataLength')
+            display += f'({length})'
+        elif data_type in {'DECIMAL', 'FLOAT', 'DOUBLE'} and column.get('precision') is not None:
+            precision = column['precision']
+            scale = column.get('scale')
+            if not isinstance(precision, int) or precision <= 0:
+                raise ConversionError(f'OM {data_type} column has invalid precision')
+            display += f'({precision}' + (f', {scale}' if scale is not None else '') + ')'
+    if not isinstance(display, str) or not display.strip():
+        raise ConversionError('OM column dataTypeDisplay must be a non-empty string')
+    try:
+        statements = sqlglot.parse(f'CREATE TABLE probe (value {display})', read='mysql',
+                                   error_level=ErrorLevel.RAISE)
+    except ParseError as exc:
+        raise ConversionError(f'Invalid OM dataTypeDisplay {display!r}') from exc
+    if len(statements) != 1 or not isinstance(statements[0], exp.Create):
+        raise ConversionError(f'Invalid OM dataTypeDisplay {display!r}')
+    entries = statements[0].this.expressions if isinstance(statements[0].this, exp.Schema) else []
+    if len(entries) != 1 or not isinstance(entries[0], exp.ColumnDef):
+        raise ConversionError(f'Invalid OM dataTypeDisplay {display!r}')
+    dtype = entries[0].args.get('kind')
+    if entries[0].args.get('constraints') or not isinstance(dtype, exp.DataType):
+        raise ConversionError(f'OM dataTypeDisplay must contain only a type: {display!r}')
+    kind = dtype.this.name
+    if kind not in TYPE_MAP or TYPE_MAP[kind] != data_type:
+        raise ConversionError(f'OM dataTypeDisplay {display!r} does not match {data_type!r}')
+    return dtype.sql(dialect='mysql')
+
+
+def render_om_table(table: dict) -> tuple[str, list[str]]:
+    """Render the core, structurally round-trippable portion of one OM table."""
+    if not isinstance(table, dict):
+        raise ConversionError('OM table request must be an object')
+    if table.get('tableType', 'Regular') != 'Regular':
+        raise ConversionError('Only OM Regular tables can be rendered as CREATE TABLE')
+    name, columns = table.get('name'), table.get('columns')
+    if not isinstance(name, str) or not isinstance(columns, list) or not columns:
+        raise ConversionError('OM table requires name and non-empty columns')
+    if any(not isinstance(column, dict) for column in columns):
+        raise ConversionError('OM column must be an object')
+    warnings = []
+    sorted_columns = sorted(enumerate(columns), key=lambda pair: (pair[1].get('ordinalPosition', pair[0] + 1), pair[0]))
+    definitions = []
+    for _, column in sorted_columns:
+        definition = mysql_identifier(column.get('name')) + ' ' + rendered_type(column)
+        constraint = column.get('constraint', 'NULL')
+        if constraint == 'NOT_NULL' or constraint == 'PRIMARY_KEY':
+            definition += ' NOT NULL'
+        elif constraint not in {None, 'NULL'}:
+            warnings.append(f'{name}.{column.get("name")}: column constraint {constraint} omitted')
+        if 'description' in column and column['description'] is not None:
+            definition += ' COMMENT ' + mysql_string(column['description'])
+        definitions.append(definition)
+    for constraint in table.get('tableConstraints') or []:
+        if not isinstance(constraint, dict) or not isinstance(constraint.get('columns'), list):
+            raise ConversionError(f'{name}: invalid table constraint')
+        columns_sql = ', '.join(mysql_identifier(value) for value in constraint['columns'])
+        kind = constraint.get('constraintType')
+        if kind == 'PRIMARY_KEY':
+            definitions.append('PRIMARY KEY (' + columns_sql + ')')
+        elif kind == 'UNIQUE':
+            definitions.append('UNIQUE (' + columns_sql + ')')
+        elif kind == 'FOREIGN_KEY':
+            referred = constraint.get('referredColumns')
+            if not isinstance(referred, list) or len(referred) != len(constraint['columns']) or not referred:
+                raise ConversionError(f'{name}: invalid FOREIGN_KEY referredColumns')
+            targets = [fqn_parts(value) for value in referred]
+            if any(len(target) != 5 for target in targets) or len({tuple(target[:4]) for target in targets}) != 1:
+                raise ConversionError(f'{name}: FOREIGN_KEY must refer to one table')
+            target = targets[0]
+            target_sql = '.'.join(mysql_identifier(value) for value in target[2:4])
+            definitions.append('FOREIGN KEY (' + columns_sql + ') REFERENCES ' + target_sql + ' ('
+                               + ', '.join(mysql_identifier(value[4]) for value in targets) + ')')
+        else:
+            warnings.append(f'{name}: table constraint {kind!r} omitted')
+    statement = 'CREATE TABLE ' + mysql_identifier(name) + ' (\n  ' + ',\n  '.join(definitions) + '\n)'
+    if 'description' in table and table['description'] is not None:
+        statement += ' COMMENT=' + mysql_string(table['description'])
+    return statement + ';', warnings
+
+
+def core_projection(table: dict) -> dict:
+    """Stable subset used to validate the reversible part of an OM request."""
+    columns = []
+    ordered_columns = sorted(enumerate(table['columns']),
+                             key=lambda pair: (pair[1].get('ordinalPosition', pair[0] + 1), pair[0]))
+    for position, (_, column) in enumerate(ordered_columns, start=1):
+        columns.append({
+            'name': column['name'], 'dataType': column['dataType'],
+            'dataTypeDisplay': rendered_type(column),
+            'dataLength': column.get('dataLength'), 'precision': column.get('precision'),
+            'scale': column.get('scale'), 'constraint': column.get('constraint', 'NULL'),
+            'description': column.get('description'), 'ordinalPosition': position,
+        })
+    constraints = []
+    for constraint in table.get('tableConstraints') or []:
+        if constraint.get('constraintType') in {'PRIMARY_KEY', 'UNIQUE', 'FOREIGN_KEY'}:
+            constraints.append({key: constraint[key] for key in ('constraintType', 'columns', 'referredColumns')
+                                if key in constraint})
+    return {'name': table['name'], 'description': table.get('description'),
+            'columns': columns, 'tableConstraints': constraints}
+
+
+def om_tables(payload) -> list[dict]:
+    if isinstance(payload, dict):
+        payload = payload.get('tables')
+    if not isinstance(payload, list) or not payload:
+        raise ConversionError('Expected a non-empty OM bundle or CreateTableRequest array')
+    return payload
+
+
+def reverse_om_tables(tables: list[dict], *, verify: bool = False) -> tuple[str, list[str]]:
+    """Render OM requests and optionally verify their core structure through the forward converter."""
+    statements, warnings = [], []
+    for table in tables:
+        statement, table_warnings = render_om_table(table)
+        statements.append(statement)
+        warnings.extend(table_warnings)
+        if verify:
+            parts = fqn_parts(table.get('databaseSchema'))
+            if len(parts) != 3:
+                raise ConversionError(f'{table.get("name")}: databaseSchema must be a three-part FQN')
+            converted, _ = convert_sql(statement, service=parts[0], database=parts[1], schema=parts[2])
+            if len(converted) != 1 or core_projection(table) != core_projection(converted[0]):
+                raise ConversionError(f'{table.get("name")}: reverse validation changed core table structure')
+    return '\n\n'.join(statements) + '\n', warnings
+
+
 def submit_tables(bundle: dict, url: str, token: str, *, allow_http=False) -> list[dict]:
     """Explicit upserts only; never infer table deletion from missing files."""
     import requests
@@ -324,6 +496,10 @@ def main(argv=None) -> int:
     submit.add_argument('--url', default=os.getenv('OM_URL'))
     submit.add_argument('--allow-http', action='store_true')
     submit.add_argument('--validate-sdk', action='store_true')
+    reverse = commands.add_parser('reverse', help='Render core MySQL DDL from OM request JSON')
+    reverse.add_argument('input', type=Path, help='Conversion bundle or CreateTableRequest array')
+    reverse.add_argument('--output', required=True, type=Path)
+    reverse.add_argument('--verify', action='store_true', help='Round-trip validate core table structure')
     args = parser.parse_args(argv)
     try:
         if args.command == 'convert':
@@ -342,7 +518,7 @@ def main(argv=None) -> int:
             tmp.write_text(json.dumps(bundle, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
             tmp.replace(args.output)
             print(f'{len(bundle["tables"])} table(s) -> {args.output}')
-        else:
+        elif args.command == 'submit':
             if not args.url:
                 raise ConversionError('--url or OM_URL is required')
             bundle = json.loads(args.bundle.read_text(encoding='utf-8'))
@@ -350,6 +526,16 @@ def main(argv=None) -> int:
                 validate_sdk(bundle['tables'])
             for result in submit_tables(bundle, args.url, os.getenv('OM_TOKEN', ''), allow_http=args.allow_http):
                 print(json.dumps(result, ensure_ascii=False))
+        else:
+            tables = om_tables(json.loads(args.input.read_text(encoding='utf-8')))
+            ddl, warnings = reverse_om_tables(tables, verify=args.verify)
+            for warning in warnings:
+                print('WARNING: ' + warning, file=sys.stderr)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            tmp = args.output.with_name(args.output.name + '.tmp')
+            tmp.write_text(ddl, encoding='utf-8')
+            tmp.replace(args.output)
+            print(f'{len(tables)} table(s) -> {args.output}')
     except Exception as exc:
         # Do not catch KeyboardInterrupt/SystemExit. CI receives a nonzero exit code.
         print(f'ERROR: {type(exc).__name__}: {exc}', file=sys.stderr)

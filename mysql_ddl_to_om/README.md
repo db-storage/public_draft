@@ -109,7 +109,22 @@ for payload in bundle['tables']:
 
 For a custom connector, `Source._iter` can generate `Either(right=CreateTableRequest(**payload))` and pass it to the standard metadata-rest Sink; parsing and mapping remain unchanged.
 
-## 5. Tests
+## 5. Reverse DDL and round-trip validation
+
+Use `reverse` with either a conversion bundle (`{"tables": [...]}`) or a JSON array of OM `CreateTableRequest` objects. `--verify` parses the generated DDL through the forward converter and fails if the core structure changes.
+
+```bash
+python mysql_ddl_to_om.py reverse models.json \
+  --output roundtrip.sql --verify
+```
+
+The core comparison covers table/column names and order, data type display, length, precision, scale, NULL/NOT NULL, descriptions, primary keys, unique constraints, and foreign keys. Only OM `Regular` tables are supported.
+
+Defaults, auto-increment, generated expressions, regular indexes, and engine/charset options are intentionally excluded from the reverse comparison. The forward converter reports them as metadata retained only in `schemaDefinition`, rather than as stable structured OM fields. Reconstructing them from the API request would therefore either invent MySQL semantics or compare opaque raw SQL text, neither of which proves structural equivalence. Tags, owners, lineage, and arbitrary OM extensions are catalog metadata rather than MySQL DDL. Review the original `schemaDefinition` and conversion warnings when these excluded fields matter; validate the rendered DDL against a test MySQL server when execution semantics matter.
+
+This is an OpenMetadata 1.13.3 table-model boundary, not metadata lost because this project uses a custom converter. The official MySQL connector also submits `CreateTableRequest` objects and has no separate structured fields for defaults, auto-increment, generated expressions, regular indexes, or engine/charset options. A connector may retain source DDL in `schemaDefinition` when DDL extraction is enabled, but that remains raw SQL rather than independently comparable catalog metadata.
+
+## 6. Tests
 
 Lifecycle-sync tests cover snapshot comparison, annotation migration, recovery from interrupted renames, soft deletion, cyclic foreign keys, pagination, concurrent changes, and request-parameter checks. See [VALIDATION.md](VALIDATION.md) for full results.
 
@@ -120,7 +135,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q
 
 Disabling third-party pytest auto-loading prevents plugins bundled with ingestion from affecting project tests. Official model-validation tests are skipped when the SDK is absent. No real OM service is connected; API permissions, version behavior, and foreign-key target validation must be verified in your environment.
 
-## 6. CI recommendations
+## 7. CI recommendations
 
 1. Check out the exact commit, convert complete CREATE TABLE files, and check nonzero exits and warnings.
 2. Archive `models.json` with the source commit SHA; SHA-256 confirms provenance but not that DDL was executed.
