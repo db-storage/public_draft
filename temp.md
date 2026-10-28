@@ -3,3 +3,10 @@ https://docs.temporal.io/cloud/manage-access/saml#how-to-configure-saml-with-okt
 https://github.com/temporalio/ui/blob/main/AUTHENTICATION.md?utm_source=chatgpt.com
 
 http://127.0.0.1:8080/callback?code=abc123&state=xyz
+
+| Option | Pros | Cons | Suitable Scenarios |
+|---|---|---|---|
+| **Shared AD group**: Assign one group to both the Cloud and Self-hosted Okta applications | Reuses existing membership and approval processes; lower maintenance effort | Membership changes affect both applications; access cannot be controlled independently through this group | Identical user populations or temporary coexistence during migration |
+| **Separate AD groups**: Assign a dedicated group to each Okta application | Independent access requests, approvals, and revocation; clear access boundaries | Requires maintaining two sets of memberships and approval configurations | Long-term coexistence or different access requirements |
+
+This comparison covers **Okta application sign-in access only**, not Temporal Namespace permissions.
