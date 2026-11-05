@@ -15,6 +15,35 @@ The RBAC_TemporalCloud_users group is not required for Okta SSO. It is simply a 
 Note that App Assignment controls whether a user can access the application through Okta SSO. It is separate from Temporal Cloud's internal RBAC, which controls namespace and API permissions.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"actorBkg": "#E8F0FE", "actorBorder": "#64748B", "actorTextColor": "#1E293B", "actorLineColor": "#94A3B8", "signalColor": "#334155", "signalTextColor": "#1E293B", "noteBkgColor": "#FFF7ED", "noteTextColor": "#334155"}}}%%
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant B as Browser
+    participant T as Temporal Cloud
+    participant O as Okta
+    participant A as Okta Assignment
+
+    U->>B: Open Temporal Cloud
+    B->>T: Request SSO Login
+    T-->>B: Redirect to Okta
+    B->>O: SAML AuthnRequest
+
+    O->>U: Request Login / MFA
+    U->>O: Complete Authentication
+
+    O->>A: Check App Assignment
+    A-->>O: Access Allowed
+    Note over O: Deny access if not assigned
+
+    O-->>B: SAML Response
+    B->>T: Submit SAML Response
+    T->>T: Validate SAML
+    T-->>B: Login Successful
+    B-->>U: Display Temporal Cloud UI
+```
+
+```mermaid
 sequenceDiagram
     autonumber
     actor U as User
