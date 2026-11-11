@@ -3,7 +3,7 @@
 @docid: doc-5b9f8d21e6a0473c
 @type: engineering-practice
 @status: proposed
-@version: 1.0
+@version: 1.1
 @updated: 2026-11-12
 @tags: [design-collaboration, markdown, kiro, agent, dependency-management]
 @depends_on: []
@@ -11,9 +11,9 @@
 
 # AI-Assisted Software Design Collaboration Best Practices
 
-## 1. 背景与目标
+## 1. Background & Goals
 
-### 1.1 背景
+### 1.1 Background
 
 团队处于软件设计阶段，主要特点：
 
@@ -22,52 +22,68 @@
 - 模块之间存在依赖，模块 A 的修改可能影响模块 B 或总体设计。
 - 多人并行设计，每个人都有自己的 AI Agent，主要使用 Kiro。
 - Agent Token 预算有限，希望避免反复读取大量设计文档。
-- 希望充分利用 Agent，提高设计效率，同时保证设计一致性。
 
-### 1.2 目标
+### 1.2 Goals
 
 1. 提高多人并行设计效率。
 2. 保证跨模块设计的一致性。
 3. 支持总体设计与模块设计双向演进。
-4. 自动识别设计变更的影响范围。
-5. 尽量降低 Agent 的 Token 消耗。
-6. 避免引入复杂、维护成本高的工具和流程。
+4. 自动识别设计变更的潜在影响范围。
+5. 降低 Agent 的 Token 消耗。
+6. 保持方案轻量，避免过度工程化。
 
-### 1.3 核心原则
+### 1.3 Core Principles
 
-- **Docs-as-Code**：使用 Git + Markdown 管理设计文档。
-- **Single Source of Truth**：公共接口、契约和架构决策有唯一权威来源。
-- **Explicit Dependencies**：使用稳定 ID 显式声明跨文档、跨章节依赖。
-- **Incremental Analysis**：优先分析变更部分和受影响部分，而非全量重新分析。
-- **Progressive Context Loading**：Agent 按需加载相关上下文。
-- **Human Ownership**：设计决策及跨模块修改最终由相关 Owner 确认。
-- **Deterministic First**：能由脚本完成的工作，不交给 LLM。
+- **Docs-as-Code**：Git + Markdown 管理设计文档。
+- **Single Source of Truth**：公共接口与核心架构决策有唯一权威来源。
+- **Explicit Dependencies**：通过稳定 ID 声明重要的跨文档、跨章节依赖。
+- **Incremental Impact Analysis**：只分析变更部分及潜在受影响部分。
+- **Progressive Context Loading**：Agent 按需加载上下文。
+- **Suspect Dependency**：上游变化触发下游重新确认，而不是自动认定下游错误。
+- **Human Ownership**：关键设计决策和跨模块修改由 Owner 确认。
+- **Deterministic First**：脚本能完成的操作不交给 LLM。
 
-## 2. 整体技术方案
+## 2. Recommended Architecture
 
-采用以下组合：
+推荐组合：
 
-| 领域 | 方案 |
+| Area | Solution |
 |---|---|
-| 文档存储 | Git + Markdown |
-| 文档结构 | Architecture + Modules + Contracts + ADR |
-| 文档身份 | Stable Document ID |
-| 章节身份 | Stable Section ID |
-| 依赖关系 | HTML Comment Metadata |
-| 依赖索引 | Python 脚本自动生成 |
-| 影响分析 | Git Diff + Dependency Graph + Agent |
-| Agent | 每人自己的 Kiro |
-| Agent 规则 | Kiro Steering |
-| Agent 工作流 | Kiro Skills |
-| 功能设计 | Kiro Specs（按需） |
-| 自动化 | Shell Hooks + CI |
-| 设计评审 | PR + CODEOWNERS + Impact Report |
+| Document Storage | Git + Markdown |
+| Document Structure | Architecture + Modules + Contracts + ADR |
+| Stable Identity | Document ID + Section ID |
+| Explicit Dependencies | HTML Comment Metadata |
+| Index | Python-generated Dependency Index |
+| Impact Analysis | Git Diff + Reverse Dependency Graph |
+| Review State | Suspect Dependency |
+| AI Agent | Kiro |
+| Agent Rules | Kiro Steering |
+| Agent Workflow | Kiro Skills |
+| Automation | Python + Shell Hooks + CI |
+| Human Collaboration | PR + CODEOWNERS + Impact Report |
 
-不建议初期引入完整的 Multi-Agent 框架或复杂的知识图谱系统。
+### 2.1 MVP Scope
 
-## 3. Markdown 文档组织
+第一版只实现五项核心能力：
 
-### 3.1 推荐目录结构
+1. Stable Document / Section IDs。
+2. Section-level `depends_on`。
+3. Reverse Dependency Index。
+4. Git Diff 到 Section 的映射。
+5. Suspect Dependency Review。
+
+暂不实现：
+
+- 图数据库。
+- 复杂依赖类型系统。
+- 全量知识图谱。
+- Multi-Agent 自动协商。
+- 自动重写所有受影响文档。
+- 全量自动语义分析。
+
+## 3. Document Organization
+
+推荐结构：
 
 ```text
 project/
@@ -95,100 +111,90 @@ project/
 └── scripts/
 ```
 
-### 3.2 各类文档职责
+### 3.1 Document Responsibilities
 
-| 文档类型 | 主要职责 |
+| Type | Responsibility |
 |---|---|
 | Architecture | 总体架构、系统边界、核心约束 |
-| Module Design | 模块内部设计、实现策略 |
+| Module Design | 模块内部设计与实现策略 |
 | Contract | 跨模块接口、数据格式、错误语义 |
 | Flow Design | 跨模块业务流程 |
-| ADR | 重要架构决策及其理由 |
-| Module README | 模块摘要、依赖、Owner、关键入口 |
-| Change Proposal | 跨模块设计变更及影响分析 |
+| ADR | 重要架构决策及原因 |
+| Module README | 模块摘要、依赖、Owner |
+| Change Proposal | 跨模块变更与影响分析 |
 
-总体设计不应复制所有模块细节。
+### 3.2 Single Source of Truth
 
-公共接口和协议应尽可能在 Contract 中定义，其他文档通过引用使用。
+- 公共接口定义统一放在 Contract。
+- 模块文档引用 Contract，不复制完整接口定义。
+- 总体设计定义系统边界和关键约束。
+- ADR 记录重要决策及其理由。
+- 各模块 Owner 维护自己的详细设计。
 
-### 3.3 文档状态
-
-建议使用：
+### 3.3 Document Status
 
 - `draft`：初步设计。
-- `proposed`：已形成方案，待确认。
-- `accepted`：已正式采纳。
-- `deprecated`：已废弃或被取代。
+- `proposed`：等待评审。
+- `accepted`：正式采纳。
+- `deprecated`：已被取代。
 
-Agent 不能将 Proposed 方案自动视为 Accepted。
+Agent 不得将 Proposed 自动视为 Accepted。
 
-## 4. ADR：Architecture Decision Record
+## 4. ADR (Architecture Decision Record)
 
 ADR 用于记录重要架构决策。
 
-建议每项重要决策建立独立 Markdown 文件，例如：
+建议包含：
+
+1. Background
+2. Options
+3. Decision
+4. Rationale
+5. Consequences
+6. Status
+
+示例：
 
 `docs/adr/003-identity-model.md`
 
-ADR 包含：
+ADR 的价值不仅在于记录方案，还在于保留为什么作出该决策的上下文，减少重复讨论。
 
-1. Background：决策背景。
-2. Options：候选方案。
-3. Decision：最终选择。
-4. Rationale：选择原因。
-5. Consequences：影响与取舍。
-6. Status：决策状态。
-
-ADR 不仅记录“怎么做”，还记录“为什么这样做”。
-
-目的在于减少团队成员和 Agent 对既有决策的反复讨论。
-
-## 5. Markdown Metadata 设计
+## 5. Markdown Metadata Specification
 
 <!--
-@section_id: sec-9ab75d62e0c14f83
+@secid: sec-9ab75d62e0c14f83
 @depends_on: []
 -->
 
-### 5.1 设计目标
+### 5.1 Design Goals
 
-通过 Markdown 中不渲染的 Metadata，使设计文档具备类似源代码的以下能力：
+通过隐藏在 Markdown 中的结构化 Metadata，实现：
 
-- 稳定符号标识。
-- 显式依赖声明。
-- 跨文件引用。
-- 依赖索引。
-- 增量变更分析。
-- 自动检查和诊断。
+- Stable Identity
+- Cross-document References
+- Section-level Dependencies
+- Reverse Dependency Lookup
+- Incremental Impact Analysis
+- Automated Validation
 
-推荐使用 **HTML Comments + 自定义 YAML 风格 Metadata**。
+推荐使用 HTML Comments 存储 Metadata。
 
-HTML 注释通常不会显示在渲染结果中，但仍然存在于 Markdown 源文件中，Agent 和脚本可以读取。
+这种格式不影响通常的 Markdown 可视化渲染，同时方便 Agent 和脚本解析。
 
-注意：HTML 注释并非安全隔离机制，在部分 Markdown 渲染环境中，注释仍可能出现在生成的 HTML 源码中。
+注意：
 
-Metadata 语法和语义属于团队自定义规范，不是 Markdown 或 Kiro 内置标准。
+- Metadata 是团队自定义约定，不是 Markdown 或 Kiro 内置能力。
+- HTML 注释不会显示在正常渲染页面，但可能出现在 HTML 源码中。
+- 不得在 Metadata 中保存凭据或其他敏感数据。
 
-### 5.2 稳定 ID 设计
+### 5.2 Stable IDs
 
 使用两种 ID：
 
-| ID 类型 | 用途 |
+| ID | Purpose |
 |---|---|
-| `docid` | 唯一标识设计文档 |
-| `secid` | 唯一标识设计章节 |
-
-建议：
-
-- ID 全局唯一。
-- ID 与文件名、路径、标题、章节顺序无关。
-- 文件重命名或移动时保留 ID。
-- 标题修改或章节重排时保留 ID。
-- 普通内容修改时保留 ID。
-- 删除后的 ID 不用于其他对象。
-- 章节拆分、合并时需要检查依赖并决定 ID 的保留或迁移。
-
-ID 建议采用随机生成方式，例如 UUID v4。
+| `docid` | 唯一标识文档 |
+| `secid` | 唯一标识章节 |
 
 示例：
 
@@ -197,13 +203,40 @@ doc-a83f1c725b9e4d02
 sec-b32e8c91f4a67120
 ```
 
-16 个随机十六进制字符具有 64 位随机空间，适合小到中等规模的文档系统，但仍需要唯一性检查；若希望更强的唯一性保证，可使用完整 UUID。
+规则：
 
-### 5.3 文档级 Metadata
+1. ID 全局唯一。
+2. ID 不依赖文件名、路径或标题。
+3. 重命名、移动、普通修改不改变 ID。
+4. 已删除的 ID 不应重新用于其他内容。
+5. 章节拆分或合并时，需要检查依赖并决定 ID 迁移。
+6. CI 检查重复及无效引用。
 
-示例：
+推荐使用 UUID v4 或具有足够随机性的短 ID。
 
-文件：`docs/contracts/identity-api.md`
+### 5.3 ID Generation
+
+Python：
+
+```python
+import uuid
+
+def new_id(prefix):
+    return f"{prefix}-{uuid.uuid4().hex[:16]}"
+```
+
+职责划分：
+
+| Task | Owner |
+|---|---|
+| 判断是否需要 ID | Agent |
+| 生成 ID | 脚本，初期也可由 Agent |
+| 定义依赖 | Agent + Owner |
+| 校验 ID 唯一性 | CI |
+| 保留已有 ID | Agent + CI |
+| 拆分合并章节 | Agent + Owner |
+
+### 5.4 Document-level Metadata
 
 ```markdown
 <!--
@@ -213,21 +246,11 @@ sec-b32e8c91f4a67120
 -->
 
 # Identity Contract
-
-...
 ```
 
-其中：
+### 5.5 Section-level Metadata
 
-- `docid` 是稳定身份。
-- `status` 是设计状态。
-- `owner` 是维护负责人。
-
-文档路径只是存储位置，不是唯一身份。
-
-### 5.4 Section 级 Metadata
-
-示例：`docs/contracts/identity-api.md`
+文件：`docs/contracts/identity-api.md`
 
 ```markdown
 <!--
@@ -242,18 +265,10 @@ sec-b32e8c91f4a67120
 -->
 ## Token Claims
 
-Token Claims 定义...
-
-<!--
-@secid: sec-d61e48c2a730b95f
-@depends_on: []
--->
-## Error Handling
-
-错误处理定义...
+定义 Token Claims...
 ```
 
-另一个文档：`docs/adr/003-identity-model.md`
+文件：`docs/adr/003-identity-model.md`
 
 ```markdown
 <!--
@@ -269,105 +284,57 @@ Token Claims 定义...
 -->
 ## Identity Mapping
 
-本章节依赖 Identity Contract
-中的 Token Claims 定义。
-
-<!--
-@secid: sec-d75214a6f381e9b0
-@depends_on: []
--->
-## Token Validation
-
-本章节没有声明的外部依赖。
+依赖 Identity Contract 的 Token Claims。
 ```
 
-这里采用全局唯一的 Section ID，因此引用时不需要写文件路径。
-
-### 5.5 依赖声明规则
-
-建议同时支持 Document 级和 Section 级依赖。
-
-```yaml
-@depends_on:
-  - doc-a83f1c725b9e4d02
-  - sec-b32e8c91f4a67120
-```
-
-含义：
-
-- `doc-*`：依赖整个文档。
-- `sec-*`：依赖指定章节。
-
-依赖方向：
+### 5.6 Dependency Semantics
 
 ```text
 A @depends_on B
+```
 
 表示：
-A 依赖 B。
-B 变更时，A 可能受到影响。
-```
 
-Metadata 约定：
+- A 依赖 B。
+- B 修改后，A 可能受到影响。
+- A 不一定需要修改，但应重新评估。
 
-| 情况 | 含义 |
+推荐区分以下情况：
+
+| Declaration | Meaning |
 |---|---|
-| `@depends_on: []` | 显式声明没有已知外部依赖 |
-| 缺少 `@depends_on` | 依赖尚未声明或未维护 |
-| `@depends_on: [sec-xxx]` | 显式依赖指定章节 |
-| `@depends_on: [doc-xxx]` | 显式依赖整个文档 |
+| `@depends_on: []` | 已检查，没有已知外部依赖 |
+| 缺少 `@depends_on` | 尚未声明或维护 |
+| `@depends_on: [sec-xxx]` | 依赖指定章节 |
+| `@depends_on: [doc-xxx]` | 依赖整个文档 |
 
-不建议在每个章节中强制维护依赖关系。
+MVP 只支持普通 `depends_on`，不引入复杂的依赖类型。
 
-建议优先为以下内容建立 Section ID：
+未来可视需要区分：
 
-- 被其他文档引用的章节。
-- 存在跨模块依赖的章节。
-- 核心 Contract。
-- 重要架构决策。
+- Contract Dependency
+- Constraint Dependency
+- Reference Dependency
 
-依赖 Metadata 的位置建议固定在对应 Heading 之前。
+### 5.7 Dependency Granularity
 
-脚本需要定义清楚：
+不要求所有章节都配置 Metadata。
 
-- 注释与 Heading 的关联规则。
-- Section 范围由 Heading 层级确定。
-- 子章节的依赖是否影响父章节。
-- 同一章节下多个 Metadata 块如何处理。
-- 当章节被拆分、合并时的 ID 迁移规则。
+优先标注：
 
-### 5.6 ID 生成
+1. 核心 Contract。
+2. 跨模块设计章节。
+3. 被其他文档引用的重要章节。
+4. 关键架构决策。
+5. 跨模块业务流程中的关键约束。
 
-推荐使用 Python：
+普通描述性章节可以不配置 Section ID。
 
-```python
-import uuid
+避免 Metadata 维护成本超过收益。
 
-def new_id(prefix):
-    return f"{prefix}-{uuid.uuid4().hex[:16]}"
+### 5.8 Dependency Index
 
-print(new_id("doc"))
-print(new_id("sec"))
-```
-
-推荐职责划分：
-
-| 工作 | 负责方 |
-|---|---|
-| 判断何时需要 ID | Agent |
-| 生成新 ID | 脚本或 Agent |
-| 定义依赖关系 | Agent + 人工 Review |
-| 保持已有 ID 不变 | Agent 规则 |
-| 校验唯一性与引用 | CI |
-| 章节拆分、合并 | Agent 分析 + Owner 确认 |
-
-初期可以允许 Agent 生成随机 ID，通过 CI 校验。
-
-长期更推荐统一使用脚本生成，避免不同 Agent 产生不一致的格式。
-
-### 5.7 自动生成 Document / Section Index
-
-通过扫描 Markdown 自动生成索引：
+由脚本扫描 Markdown 自动生成：
 
 ```json
 {
@@ -381,21 +348,21 @@ print(new_id("sec"))
 }
 ```
 
-Index 是脚本生成的派生数据，不需要人工维护。
-
-可以保存到：
+建议保存为：
 
 ```text
 .cache/design-index.json
 ```
 
-如果文件移动或标题变化，只需要重新生成 Index。
+Index 是派生数据，不需要人工维护。
 
-### 5.8 反向依赖索引
+文件名、路径、标题变化后重新生成即可。
 
-文档中只维护 `depends_on`，不要求额外维护 `consumers`。
+### 5.9 Reverse Dependency Index
 
-脚本自动构建反向依赖：
+源文档只维护 `depends_on`。
+
+脚本自动生成反向依赖：
 
 ```text
 sec-b32e8c91f4a67120
@@ -403,147 +370,212 @@ sec-b32e8c91f4a67120
   <- sec-e728ab42d1f9056c
 ```
 
-用途：
+支持：
 
-当 `sec-b32e8c91f4a67120` 发生修改时，快速找到可能受到影响的章节。
+- Direct Dependents
+- Transitive Dependents
+- Potentially Impacted Sections
 
-依赖查询不需要 LLM。
+依赖查询由脚本完成，不需要 LLM。
 
-## 6. 跨模块设计变更流程
+## 6. Suspect Dependency Mechanism
 
 <!--
-@section_id: sec-0c37a4e52d691f8b
+@secid: sec-0c37a4e52d691f8b
 @depends_on:
   - sec-9ab75d62e0c14f83
 -->
 
-### 6.1 推荐流程
+### 6.1 Concept
+
+借鉴需求工程中 Suspect Link / Traceability 的思想。
+
+当一个被依赖的 Section 修改后，其下游依赖关系进入需要重新确认的状态。
+
+原则：
+
+**Upstream Changed ≠ Downstream Incorrect**
+
+上游修改不代表下游必然错误，只代表需要判断是否受到影响。
+
+### 6.2 Review States
+
+建议 MVP 使用：
+
+| State | Meaning |
+|---|---|
+| `suspect` | 上游发生修改，尚未确认影响 |
+| `reviewed-no-change` | 已检查，下游无需调整 |
+| `reviewed-updated` | 已检查，并完成下游调整 |
+
+状态建议保存在 PR Impact Report 或 CI 结果中，不必写入源文档 Metadata。
+
+如果需要持久追踪，可以后续引入独立 Review 记录。
+
+### 6.3 Trigger
+
+示例：
 
 ```text
-1. Module A 提出设计变更
-       |
-2. Git Diff 确定变更内容
-       |
-3. Dependency Index 定位关联章节
-       |
-4. Agent 生成 Impact Report
-       |
-5. Owner 确认跨模块契约/架构决策
-       |
-6. 各 Module Owner 更新自己的设计
-       |
-7. PR Review + CI 检查
-       |
-8. Merge 后生成新的依赖索引
+Contract Section Changed
+         |
+         v
+Git Diff identifies changed Section
+         |
+         v
+Reverse Dependency Lookup
+         |
+         v
+Mark Dependents as Suspect
+         |
+         v
+Agent Semantic Review
+         |
+         v
+Owner Confirmation
 ```
 
-其中：
+### 6.4 Example
 
-- 步骤 2、3、8 主要由脚本完成。
-- 步骤 4、6 可使用 Agent。
-- 步骤 5、7 保留人工决策。
+变更：
 
-### 6.2 变更分类
+```text
+sec-identity-contract
+```
 
-| 类型 | 示例 | 处理方式 |
+依赖：
+
+```text
+sec-workflow-auth
+sec-cli-login
+```
+
+自动生成：
+
+```markdown
+# Dependency Impact Report
+
+## Changed Section
+
+- sec-identity-contract
+
+## Suspect Dependencies
+
+- sec-workflow-auth
+- sec-cli-login
+
+## Required Review
+
+- Workflow Owner
+- CLI Owner
+
+## Review Results
+
+| Section | Status | Reason |
 |---|---|---|
-| 局部修改 | 模块内部缓存方案调整 | Module Owner |
-| 兼容接口变更 | 增加可选字段 | Contract Owner + 消费方 |
-| 破坏性接口变更 | 删除已有字段 | 所有受影响 Owner |
-| 架构级变更 | 修改认证架构 | Architecture Review + ADR |
-| 文档澄清 | 修正描述错误 | 普通 PR |
+| sec-workflow-auth | suspect | Pending review |
+| sec-cli-login | suspect | Pending review |
+```
 
-跨模块设计修改原则上先分析影响，再执行修改。
+Agent 后续只阅读：
 
-### 6.3 Impact Report
+- 上游变更的 Git Diff。
+- 下游受影响 Section。
+- 必要的 Contract / ADR。
 
-推荐格式：
+再判断实际影响。
+
+### 6.5 Suspect Review Rules
+
+1. 上游发生语义相关变更时，应重新检查下游依赖。
+2. 脚本负责识别候选影响范围。
+3. Agent 负责分析语义影响。
+4. Owner 负责确认关键设计变化。
+5. 不自动修改所有下游文档。
+6. PR 合并前应处理关键 Contract 的未确认 Suspect。
+7. 无需修改的依赖可以标记 `reviewed-no-change`。
+8. 已修改的依赖可以标记 `reviewed-updated`。
+
+### 6.6 Important Limitation
+
+显式依赖图无法发现没有声明的关系。
+
+因此：
+
+- 依赖图可以帮助确定可能受影响的范围。
+- 依赖图不能保证所有受影响的文档都已找到。
+- 对关键 Contract，可以补充全文搜索或 Agent 语义检查。
+- Agent 修改设计时，应评估是否需要新增或删除依赖声明。
+
+## 7. Cross-module Change Workflow
+
+### 7.1 Workflow
+
+1. Module A 提出变更。
+2. Git Diff 定位发生变化的 Section。
+3. Dependency Index 找到直接及潜在间接依赖。
+4. 自动生成 Suspect List。
+5. Agent 执行语义影响分析。
+6. 相关 Owner 确认 Contract / ADR。
+7. 各 Module Owner 修改自己的设计。
+8. PR Review + CI。
+9. Merge 后生成新的 Index。
+
+### 7.2 Impact Report
 
 ```markdown
 # Design Change Impact Report
 
 ## Proposed Change
-
-变更内容...
+...
 
 ## Changed Sections
-
 - sec-xxx
 
 ## Directly Impacted
-
 - sec-yyy
+
+## Transitively Impacted
 - sec-zzz
 
-## Potentially Impacted
-
-- doc-aaa
+## Suspect Dependencies
+- sec-aaa
+- sec-bbb
 
 ## Compatibility Risks
+...
 
-风险...
+## Open Decisions
+...
 
-## Required Decisions
+## Required Reviewers
+...
 
-待确认决策...
-
-## Recommended Reviewers
-
-- Auth Owner
-- Workflow Owner
-
-## Recommended Actions
-
-建议的文档修改...
+## Review Results
+...
 ```
 
-Impact Report 既供人工评审，也可供其他 Agent 使用。
+### 7.3 Change Classification
 
-### 6.4 增量影响分析
-
-推荐采用：
-
-1. `git diff` 获取变更范围。
-2. 解析 Markdown Heading 和 Section ID。
-3. 识别发生变化的 Section。
-4. 查询反向依赖图。
-5. 返回直接依赖及必要的传递依赖。
-6. Agent 只阅读相关 Section。
-7. Agent 判断实际语义影响。
-
-注意：
-
-- 依赖图识别的是可能受影响的范围，不代表所有依赖者都必须修改。
-- 未显式声明的依赖无法通过依赖图可靠发现。
-- 对关键 Contract 可以增加全文搜索或 Agent 语义检查。
-- 删除、移动、拆分章节时应比较 Git 两个版本的索引，避免只靠变更后的 ID 信息。
-- 同时修改章节内容及依赖声明时，应同时检查旧、新依赖关系。
-
-## 7. Kiro Agent 使用实践
-
-<!--
-@section_id: sec-17bf83a6d42c905e
-@depends_on: []
--->
-
-### 7.1 不建议初期使用复杂 Multi-Agent
-
-推荐模式：
-
-**每人一个 Kiro Agent + 共享 Steering + 共享 Skills + Git PR。**
-
-| 方案 | 建议 |
+| Change | Recommended Review |
 |---|---|
-| 每人 Kiro + 共享规则 | 优先 |
-| 专用 Architecture Reviewer Agent | 按需 |
-| 每模块独立 Agent | 暂不需要 |
-| 多 Agent 自动协商设计 | 暂不推荐 |
+| 模块内部修改 | Module Owner |
+| 兼容性 Contract 变更 | Contract Owner + Consumer |
+| 破坏性 Contract 变更 | 所有受影响 Owner |
+| 架构级变更 | Architecture Review + ADR |
+| 文档澄清 | 普通 PR |
 
-多个团队成员可以各自使用 Agent，但不必实现复杂的 Agent-to-Agent 自动通信。
+## 8. Kiro Agent Practices
 
-### 7.2 Steering：公共规则
+### 8.1 Recommended Collaboration Model
 
-建议文件：
+采用：
+
+**One Kiro Agent per Developer + Shared Steering + Shared Skills**
+
+不建议初期引入复杂的 Multi-Agent Framework。
+
+### 8.2 Steering
 
 `.kiro/steering/design-rules.md`
 
@@ -554,329 +586,308 @@ inclusion: always
 
 # Design Rules
 
-1. Read docs/index.md as the project entry point.
-2. Load only task-relevant documents.
+1. Read docs/index.md as the entry point.
+2. Load only task-relevant content.
 3. Contracts are the source of truth for interfaces.
-4. Respect design status: Draft, Proposed, Accepted.
-5. Identify dependencies before cross-module changes.
-6. Never silently modify another module's design.
-7. Preserve existing Document and Section IDs.
-8. Generate new IDs only when required.
-9. Never invent referenced IDs; resolve them from the index.
-10. Prefer minimal diffs over full-document rewrites.
-11. Report conflicts and unresolved questions explicitly.
-12. Run metadata validation after design changes.
+4. Respect Draft / Proposed / Accepted status.
+5. Preserve existing Document and Section IDs.
+6. Never invent referenced IDs.
+7. Use the dependency index before cross-module changes.
+8. Generate an Impact Report for cross-module changes.
+9. Treat impacted dependencies as Suspect until reviewed.
+10. Do not silently modify another module's design.
+11. Prefer minimal diffs.
+12. Run metadata validation after edits.
 ```
 
-Steering 应保持简短。
+保持 Steering 简短，不把完整设计文档全部配置为 Always。
 
-不要把所有设计文档配置为 `always` 加载。
+### 8.3 Shared Skills
 
-### 7.3 Steering 加载策略
+推荐：
 
-| 类型 | 用途 |
-|---|---|
-| `always` | 少量全局规则 |
-| `fileMatch` | 特定目录、模块规则 |
-| `manual` | 大型架构评审指南 |
-| `auto` | 可由 Kiro 按任务相关性判断的指导内容 |
+**design-change**
 
-具体支持方式和语法以当前 Kiro 官方文档为准。
+- 识别变更目标。
+- 获取 Git Diff。
+- 查询相关依赖。
+- 输出 Suspect List。
+- 加载相关 Section。
+- 生成 Impact Report。
+- 根据 Owner 确认更新设计。
+- 运行校验。
 
-### 7.4 Skills：共享标准工作流
+**design-review**
 
-建议优先创建两个 Skills。
+- 检查 Contract 一致性。
+- 检查 ADR 约束。
+- 检查遗漏依赖。
+- 审查 Suspect Dependency。
+- 发现设计冲突和风险。
+- 输出未解决问题。
 
-**Skill A：design-change**
-
-用于设计变更。
-
-工作步骤：
-
-1. 理解修改目标。
-2. 读取项目 Index 和模块摘要。
-3. 读取相关 Contract。
-4. 使用脚本查询依赖关系。
-5. 生成 Impact Report。
-6. 等待必要的跨模块决策。
-7. 修改批准范围内的文档。
-8. 运行校验。
-9. 输出最终变更摘要。
-
-**Skill B：design-review**
-
-用于设计审查。
-
-重点检查：
-
-- Contract 一致性。
-- 已确认 ADR 的约束。
-- 跨模块依赖是否遗漏。
-- 设计冲突。
-- 破坏性修改。
-- 未解决的问题。
-- 是否存在不必要的文档重写。
-
-### 7.5 Specs 的使用原则
-
-Kiro Specs 适用于明确功能的设计与实现。
-
-建议：
-
-- 复杂功能：使用 Requirements / Design / Tasks。
-- 小型功能：使用简化 Spec。
-- 架构探索：优先 Markdown + ADR。
-- 公共接口：放到共享 Contract 中。
-
-不要让不同 Feature Spec 各自维护公共接口的多个权威版本。
-
-### 7.6 Hooks 与 CI
-
-优先使用 Shell Hooks 和静态检查工具。
-
-推荐检查：
-
-- Document ID 唯一性。
-- Section ID 唯一性。
-- 引用目标是否存在。
-- Markdown 链接是否有效。
-- 依赖声明是否合法。
-- 是否存在悬空引用。
-- 关键 Contract 变更是否缺少 Impact Report。
-- 是否修改了已有的稳定 ID。
-
-只有需要语义理解时，才调用 Agent。
-
-避免每次 Markdown 保存都触发全量 LLM Review。
-
-## 8. Token 优化策略
-
-### 8.1 Progressive Context Loading
+### 8.4 Context Loading
 
 采用四级上下文：
 
-| 级别 | 内容 | 加载时机 |
-|---|---|---|
-| L0 | 全局协作规则 | Always |
-| L1 | 项目索引、模块摘要 | 相关任务开始时 |
-| L2 | Contract、ADR、具体 Section | 按依赖加载 |
-| L3 | 完整设计文档及相邻模块 | 复杂分析时 |
+| Level | Content |
+|---|---|
+| L0 | 全局规则 |
+| L1 | 项目索引、模块摘要 |
+| L2 | 相关 Contract / ADR / Section |
+| L3 | 完整设计文档和相邻模块 |
 
-理想情况下：
+优先加载 L0–L2。
 
-```text
-User Request
-    |
-Project Index
-    |
-Relevant Module Summary
-    |
-Dependency Query
-    |
-Relevant Sections
-    |
-Agent Analysis
-```
+只有必要时加载 L3。
 
-核心是避免 Agent 反复阅读整个项目。
-
-### 8.2 Git Diff 优先
-
-变更分析时使用：
+### 8.5 Git Diff First
 
 ```bash
 git diff main...HEAD -- docs/
 ```
 
-优先读取：
+先定位变更，再读取依赖章节。
 
-- 变更片段。
-- 变更所在章节。
-- 相关 Contract。
-- 直接依赖章节。
+避免要求 Agent 比较全部设计文档。
 
-只有在必要时扩大上下文。
+### 8.6 Sessions
 
-### 8.3 每个模块提供简短 README
+- 每个独立设计问题使用相对独立的 Session。
+- 确认的决定写入 Git 文档。
+- 不把 Agent Chat History 作为设计权威来源。
+- 新 Session 从当前设计文档恢复上下文。
 
-推荐包含：
+## 9. Automation & designctl
 
-- Responsibilities
-- Inputs / Outputs
-- Contracts
-- Dependencies
-- Consumers
-- Owner
-- Key Decisions
-- Open Questions
-
-Module README 是摘要，不应复制完整设计内容。
-
-### 8.4 不把聊天历史当作设计状态
-
-建议：
-
-- 一个独立设计任务使用一个 Session。
-- 重要决策及时写入 ADR、Contract 或模块设计。
-- 新 Session 根据 Git 文档恢复当前状态。
-- 保留简短 Open Questions，而不是依赖完整聊天记录。
-- 对较长任务使用精简的任务状态摘要。
-
-### 8.5 Agent 分析与脚本分析的边界
-
-| 任务 | 优先实现 |
-|---|---|
-| ID 生成 | Python |
-| ID 唯一性检查 | Python / CI |
-| 文档解析 | Python |
-| 依赖图构建 | Python |
-| 反向依赖查询 | Python |
-| Git Diff 解析 | Python / Git |
-| 语义影响分析 | Agent |
-| 架构取舍 | Agent 辅助 + 人工 |
-| 设计文档修改 | Agent |
-| 最终设计决策 | Owner |
-
-**原则：确定性操作尽量不消耗 Token。**
-
-## 9. 轻量级 designctl 工具
-
-可以逐步实现一个简单的 CLI。
+建议逐步实现：
 
 ```bash
-# 生成新的 Document ID
+# Generate IDs
 designctl id new doc
-
-# 生成新的 Section ID
 designctl id new sec
 
-# 扫描 Markdown，生成索引
+# Build dependency index
 designctl index
 
-# 检查 Metadata 和引用
+# Validate metadata
 designctl check
 
-# 查看某章节的依赖
+# Query dependencies
 designctl deps sec-xxx
 
-# 查看反向依赖
+# Reverse dependency impact
 designctl impact sec-xxx
 
-# 分析 Git 变更的影响
+# Analyze changed sections
 designctl impact --diff main...HEAD
 ```
 
-建议将 Index 视为派生数据。
+职责：
 
-`designctl` 不负责最终的语义决策，而是向 Agent 提供精确、低成本的上下文定位能力。
-
-初期不必一次性实现所有功能。
-
-## 10. 分阶段落地
-
-### Phase 1：基础规范
-
-优先完成：
-
-- Git + Markdown 统一管理。
-- 文档目录和 Index。
-- 模块 Owner。
-- Document ID 和 Section ID 规范。
-- Kiro Steering。
-- 基础 ID 唯一性检查。
-
-此阶段允许 Agent 自行生成随机 ID，由 CI 检查。
-
-### Phase 2：依赖和变更治理
-
-逐步增加：
-
-- Section 级 `depends_on`。
-- Contract 独立管理。
-- ADR。
-- Dependency Index。
-- 反向依赖查询。
-- Impact Report。
-- PR Review 规则。
-
-优先为核心 Contract 和跨模块依赖添加 Metadata，不强制一次性标注所有文档。
-
-### Phase 3：Agent 工作流和增量分析
-
-进一步实现：
-
-- 共享 Kiro Skills。
-- Git Diff 到 Section 的映射。
-- 增量影响分析。
-- 相关章节按需加载。
-- 自动生成影响报告。
-- 必要时增加 Architecture Reviewer Agent。
-
-不建议在此阶段之前就建设完整的 Multi-Agent 协作系统。
-
-## 11. 风险及注意事项
-
-| 风险 | 应对措施 |
+| Operation | Implementation |
 |---|---|
-| Agent 修改已有 ID | Steering 规则 + CI |
-| ID 重复 | 随机 ID + 全局唯一性校验 |
-| 文件重命名导致引用失效 | 使用稳定 ID，不使用路径作为身份 |
-| 章节拆分/合并 | 分析并迁移依赖关系 |
-| 依赖声明不完整 | 核心契约强制标注 + PR Review |
-| 依赖关系过度标注 | 先覆盖跨模块关键依赖 |
-| Agent 大规模重写文档 | Minimal Diff 规则 |
-| 同一接口多处定义 | Contract 作为权威来源 |
-| LLM Review Token 过多 | 静态检查优先、按需触发 |
-| 依赖图存在传递影响 | 支持直接和间接依赖查询 |
-| Markdown Metadata 格式不统一 | 固定 Schema + Parser |
-| Agent 自动判断错误 | Owner 审查关键设计 |
+| ID generation | Python |
+| Markdown parsing | Python |
+| Dependency graph | Python |
+| Git Diff | Git + Python |
+| Suspect identification | Python |
+| Semantic impact analysis | Agent |
+| Design modifications | Agent + Owner |
+| Final decisions | Owner |
 
-## 12. 衡量方案效果
+CI 优先执行确定性检查。
 
-建议关注：
+只有必要时才调用 Agent。
 
-| 指标 | 目标 |
+## 10. Risks & Mitigations
+
+### 10.1 Stale Dependencies
+
+最大风险是依赖关系逐渐过时。
+
+例如 A 新增对 C 的依赖，但没有更新 `depends_on`。
+
+应对：
+
+- Agent 修改设计时检查是否产生新的跨模块依赖。
+- PR Review 检查依赖关系变化。
+- 核心 Contract 要求较高的依赖覆盖率。
+- 必要时增加全文搜索或语义检查。
+
+### 10.2 Excessive Metadata
+
+如果每个章节都要求 ID 和多个依赖，维护成本可能过高。
+
+应对：
+
+- 只标记关键依赖。
+- 不强制所有章节都有 ID。
+- 不强制所有章节声明 `depends_on: []`。
+- 不引入过多依赖类型。
+
+### 10.3 False Positives
+
+上游设计变化不一定影响下游。
+
+应对：
+
+- 使用 Suspect 状态。
+- Agent 做语义分析。
+- Owner 确认。
+- 不自动修改所有依赖者。
+
+### 10.4 Incomplete Dependency Graph
+
+没有显式声明的依赖无法自动识别。
+
+应对：
+
+- 使用依赖图作为主要候选来源。
+- 用搜索和 Agent 发现潜在遗漏。
+- 不将“无已知依赖”解释为“完全无影响”。
+
+### 10.5 Section Split / Merge
+
+章节拆分和合并可能引起依赖迁移。
+
+应对：
+
+- 不自动复用原 ID 指向不同语义对象。
+- 对变化后的语义边界重新评估。
+- 使用 Git 两个版本的 Index 进行比较。
+- 必要时更新所有引用者。
+
+## 11. Rollout Plan
+
+### Phase 1: Basic Metadata
+
+- 统一 Markdown 文档结构。
+- 引入 Document ID 和 Section ID。
+- 建立 Kiro Steering。
+- 编写基础 ID 校验脚本。
+- 优先标注关键 Contract。
+
+### Phase 2: Dependency Tracking
+
+- 引入 `depends_on`。
+- 实现 Dependency Index。
+- 实现 Reverse Dependency Lookup。
+- 使用 Git Diff 定位变更 Section。
+- 自动输出潜在受影响章节。
+
+### Phase 3: Suspect Review
+
+- 自动标记 Suspect。
+- 生成 Impact Report。
+- 共享 Kiro Design Review Skill。
+- 在 PR 中记录 Review 结果。
+- 针对关键 Contract 引入必要的评审要求。
+
+### Phase 4: Optimization
+
+根据实际数据决定是否继续：
+
+- 自动发现遗漏依赖。
+- 引入依赖类型。
+- 增加 Architecture Reviewer Agent。
+- 增强 IDE 集成。
+- 优化 Token 消耗。
+
+不提前引入复杂架构。
+
+## 12. Effectiveness Validation
+
+建议选择 3–5 个相互依赖的模块、约 20–50 个 Markdown 文档进行试验。
+
+比较：
+
+- A：普通 Markdown + Agent 搜索。
+- B：Metadata + Dependency Index + Git Diff + Agent。
+
+使用 10–20 次真实设计变更衡量。
+
+| Metric | Expected Result |
 |---|---|
-| 每次设计变更的 Token 消耗 | 降低 |
-| 跨模块影响识别遗漏率 | 降低 |
-| Design PR 返工次数 | 降低 |
-| 文档之间的契约冲突 | 减少 |
-| Agent 每次读取的文档数量 | 减少 |
-| 变更影响分析耗时 | 缩短 |
-| Metadata 维护成本 | 保持较低 |
+| Token Consumption | 降低 |
+| Missed Impacted Sections | 减少 |
+| False Positive Suspects | 可接受 |
+| Review Time | 缩短 |
+| Metadata Maintenance Time | 保持较低 |
+| Design Rework | 减少 |
 
-## 13. 最终建议
+成本评估不仅考虑 Token，还要考虑：
 
-整体方案可以概括为：
+```text
+Total Cost =
+  Agent Token Cost
+  + Human Maintenance Cost
+  + Review Cost
+  + Rework Cost
+```
 
-**Git + Markdown + Stable IDs + Explicit Dependencies + Incremental Impact Analysis + Kiro Skills**
+不能仅因为 Token 下降，就认定整体方案一定有效。
 
-具体原则：
+## 13. Related Industry Practices
 
-1. 不急于引入复杂 Multi-Agent。
-2. 通过稳定 ID 建立跨文档、跨章节引用。
-3. 通过 HTML Comment Metadata 声明依赖关系。
-4. 通过脚本建立依赖索引和反向依赖图。
-5. 使用 Git Diff 识别实际变化。
-6. 使用脚本定位可能受影响的章节。
-7. 由 Agent 判断语义影响并辅助修改。
-8. 由相关 Owner 确认跨模块架构决策。
-9. 将 Kiro Steering 保持精简，用 Skills 标准化工作流。
-10. 逐步引入自动化，避免过度工程化。
+可以参考：
 
-这套方案的核心思路类似于 **Incremental Compiler（增量编译器）**：
+### 13.1 IBM DOORS Next
 
-| 编译器概念 | 设计文档系统 |
-|---|---|
-| Symbol | Document / Section ID |
-| Import | `depends_on` |
-| Symbol Table | Design Index |
-| Dependency Graph | 文档依赖图 |
-| Change Detection | Git Diff |
-| Incremental Compilation | 增量影响分析 |
-| Compiler Diagnostics | Metadata 校验 |
-| IDE Assistance | Kiro Agent |
+借鉴：
 
-最终目标不是让 Agent 理解并记住整个项目，而是：
+- Stable requirement identity。
+- Traceability。
+- Suspect Links。
+- Change Impact Analysis。
 
-**让工具精确定位需要理解的内容，让 Agent 只对真正需要语义推理的部分进行分析。**
+### 13.2 Jama Connect
+
+借鉴：
+
+- Requirement traceability。
+- Upstream / Downstream relationships。
+- Change review workflows。
+
+### 13.3 Dendron
+
+借鉴：
+
+- Markdown Frontmatter。
+- Stable Document IDs。
+- Backlinks。
+
+### 13.4 Backstage
+
+借鉴：
+
+- Stable entity references。
+- `dependsOn` relationships。
+- Reverse dependency queries。
+
+这些系统的目标和实现各不相同，但相关思想可以用于轻量级 Markdown 设计管理。
+
+## 14. Final Recommendation
+
+推荐方案：
+
+**Git + Markdown + Stable IDs + Explicit Dependencies + Reverse Index + Git Diff + Suspect Review + Kiro Skills**
+
+核心理念：
+
+1. 把 Markdown 变成可追踪的设计知识库。
+2. 通过稳定 ID 消除文件路径、标题变化的影响。
+3. 通过显式依赖实现确定性的影响范围查询。
+4. 通过 Git Diff 实现增量分析。
+5. 通过 Suspect Dependency 避免将潜在影响误判为确定错误。
+6. 使用 Agent 完成语义分析，而非重复执行确定性工作。
+7. 通过 Owner Review 保证跨模块设计决策的可靠性。
+8. 保持 Metadata 和工具尽可能轻量。
+9. 用真实实验衡量收益和维护成本。
+10. 根据实际需要逐步演进，而非一次性建设完整平台。
+
+最终目标：
+
+**Make design documents incrementally analyzable and AI-friendly, while keeping human ownership and maintenance costs low.**
+
+这是一种借鉴增量编译与需求追踪思想的轻量级设计文档管理方案。
