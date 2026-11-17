@@ -1,0 +1,9 @@
+{
+  "operations": [
+    {"table":"users","action":"upsert","data":{"user_id":"alice","user_type":"Human","cmdb":"CMDB-001","created_at":"2026-11-17T10:00:00Z"}},
+    {"table":"groups","action":"upsert","data":{"group_id":"developers","description":"Development team"}},
+    {"table":"group_members","action":"upsert","data":{"group_id":"developers","user_type":"Human","user_id":"alice","added_at":"2026-11-17"}},
+    {"table":"user_permissions","action":"upsert","data":{"user_id":"alice","user_type":"Human","namespace":"production","role_name":"read"}},
+    {"table":"group_permissions","action":"upsert","data":{"group_id":"developers","namespace":"production","role_name":"write"}}
+  ]
+}
