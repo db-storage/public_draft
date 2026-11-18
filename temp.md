@@ -1,3 +1,6 @@
+架构图：
+https://medium.com/mitti-engineering/building-resilient-microservice-workflows-with-temporal-a-next-gen-workflow-engine-a9637a73572d
+
 
 # Temporal Self-Hosted UI Server 集成 Okta OIDC 与 Bearer Token
 
