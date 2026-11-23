@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "provider": "cassandra",
+  "cassandra": {
+    "hosts": ["127.0.0.1:9042"],
+    "keyspace": "tata",
+    "username": "",
+    "password": "",
+    "timeout_ms": 500,
+    "connect_timeout_ms": 3000,
+    "num_conns": 2,
+    "max_groups": 100
+  }
+}
